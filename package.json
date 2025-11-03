@@ -7,23 +7,44 @@
   "bin": {
     "opencode-amplifier": "./server.js"
   },
+  "mcpName": "io.github.michaeljabbour/opencode-amplifier",
   "scripts": {
     "start": "node server.js",
     "test": "./test.sh"
   },
   "keywords": [
     "mcp",
+    "model-context-protocol",
     "opencode",
     "amplifier",
+    "microsoft",
     "ai",
-    "tools"
+    "tools",
+    "automation",
+    "scenarios",
+    "bridge",
+    "integration"
   ],
-  "author": "",
+  "author": "Michael Jabbour",
   "license": "MIT",
+  "homepage": "https://github.com/michaeljabbour/opencode-amplifier",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/michaeljabbour/opencode-amplifier.git"
+  },
+  "bugs": {
+    "url": "https://github.com/michaeljabbour/opencode-amplifier/issues"
+  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.21.0"
   },
   "engines": {
     "node": ">=18.0.0"
-  }
+  },
+  "files": [
+    "server.js",
+    "server.json",
+    "README.md",
+    "LICENSE"
+  ]
 }

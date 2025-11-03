@@ -2,6 +2,8 @@
 
 **A minimal MCP bridge that lets you use Microsoft Amplifier scenarios directly from OpenCode.ai**
 
+<!-- mcp-name: io.github.michaeljabbour/opencode-amplifier -->
+
 This project provides a lightweight, maintainable integration between [OpenCode.ai](https://opencode.ai) and [Microsoft Amplifier](https://github.com/microsoft/amplifier) using the Model Context Protocol (MCP). It automatically discovers your Amplifier scenarios and exposes them as native tools in OpenCode.
 
 ---
@@ -24,6 +26,20 @@ This implementation is intentionally minimal—a single JavaScript file that aut
 
 ### 1. Install
 
+#### From NPM (Recommended)
+
+```bash
+npm install -g opencode-amplifier
+```
+
+#### From MCP Registry
+
+This server is available in the official MCP Registry:
+- **Registry Name**: `io.github.michaeljabbour/opencode-amplifier`
+- **Package**: `opencode-amplifier` on npm
+
+#### From Source
+
 ```bash
 # Clone this repository
 git clone https://github.com/michaeljabbour/opencode-amplifier.git
@@ -36,6 +52,26 @@ npm install
 ### 2. Configure OpenCode
 
 Add to `~/.opencode/config.json`:
+
+#### If installed globally via npm:
+
+```json
+{
+  "mcp": {
+    "amplifier": {
+      "type": "local",
+      "command": ["npx", "opencode-amplifier"],
+      "environment": {
+        "AMPLIFIER_PATH": "/path/to/amplifier",
+        "PYTHON_PATH": "/path/to/amplifier/.venv/bin/python3"
+      },
+      "enabled": true
+    }
+  }
+}
+```
+
+#### If running from source:
 
 ```json
 {
@@ -209,6 +245,34 @@ If yes to #3, keep it simple. PRs welcome!
 
 ---
 
+## MCP Registry
+
+This server is registered in the official Model Context Protocol Registry:
+
+- **Registry Name**: `io.github.michaeljabbour/opencode-amplifier`
+- **Namespace**: `io.github.michaeljabbour/*`
+- **Package Type**: npm
+- **Schema Version**: 2025-09-29
+
+### Publishing Updates
+
+To publish a new version to the registry:
+
+1. Update the version in both `package.json` and `server.json`
+2. Publish to npm: `npm publish`
+3. Use the MCP Registry CLI to publish:
+   ```bash
+   npx mcp-publisher login github
+   npx mcp-publisher publish server.json
+   ```
+
+The registry validates that:
+- The `mcpName` field in package.json matches the server name
+- The npm package is published and accessible
+- The namespace ownership is verified via GitHub authentication
+
+---
+
 ## License
 
 MIT
@@ -220,3 +284,4 @@ MIT
 - [OpenCode.ai](https://opencode.ai)
 - [Microsoft Amplifier](https://github.com/microsoft/amplifier)
 - [Model Context Protocol](https://modelcontextprotocol.io)
+- [MCP Registry](https://registry.modelcontextprotocol.io)

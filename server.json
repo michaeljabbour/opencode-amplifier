@@ -1,0 +1,75 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json",
+  "name": "io.github.michaeljabbour/opencode-amplifier",
+  "title": "OpenCode-Amplifier",
+  "description": "A minimal MCP bridge that exposes Microsoft Amplifier scenarios as native tools in OpenCode.ai and other MCP clients. Automatically discovers scenarios, parses parameters, and provides seamless integration.",
+  "version": "1.0.0",
+  "homepage": "https://github.com/michaeljabbour/opencode-amplifier",
+  "license": "MIT",
+  "keywords": [
+    "mcp",
+    "opencode",
+    "amplifier",
+    "microsoft",
+    "ai",
+    "tools",
+    "automation",
+    "scenarios"
+  ],
+  "author": {
+    "name": "Michael Jabbour"
+  },
+  "sourceUrl": "https://github.com/michaeljabbour/opencode-amplifier",
+  "packages": [
+    {
+      "type": "npm",
+      "name": "opencode-amplifier",
+      "installCommand": "npm install -g opencode-amplifier"
+    }
+  ],
+  "capabilities": {
+    "tools": true,
+    "resources": false,
+    "prompts": false
+  },
+  "runtime": {
+    "node": ">=18.0.0"
+  },
+  "configuration": {
+    "required": [],
+    "optional": [
+      {
+        "name": "AMPLIFIER_PATH",
+        "description": "Path to Amplifier installation directory",
+        "type": "string",
+        "default": "../amplifier"
+      },
+      {
+        "name": "PYTHON_PATH",
+        "description": "Path to Python interpreter (recommended: use venv path)",
+        "type": "string",
+        "default": "python3"
+      },
+      {
+        "name": "TIMEOUT",
+        "description": "Execution timeout in milliseconds",
+        "type": "number",
+        "default": "300000"
+      },
+      {
+        "name": "LOG_LEVEL",
+        "description": "Logging level (DEBUG, INFO, WARN, ERROR)",
+        "type": "string",
+        "default": "INFO"
+      }
+    ]
+  },
+  "setupInstructions": "Install the package globally and configure your MCP client with the server command. Set AMPLIFIER_PATH to your Amplifier installation directory and PYTHON_PATH to your Python interpreter (preferably from a virtual environment).",
+  "usageExamples": [
+    {
+      "title": "Basic Usage in OpenCode",
+      "description": "Configure OpenCode to use the bridge",
+      "code": "{\n  \"mcp\": {\n    \"amplifier\": {\n      \"type\": \"local\",\n      \"command\": [\"npx\", \"opencode-amplifier\"],\n      \"environment\": {\n        \"AMPLIFIER_PATH\": \"/path/to/amplifier\",\n        \"PYTHON_PATH\": \"/path/to/amplifier/.venv/bin/python3\"\n      },\n      \"enabled\": true\n    }\n  }\n}"
+    }
+  ]
+}
