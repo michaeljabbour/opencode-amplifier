@@ -1,0 +1,29 @@
+{
+  "name": "opencode-amplifier",
+  "version": "1.0.0",
+  "description": "MCP bridge between OpenCode.ai and Microsoft Amplifier",
+  "type": "module",
+  "main": "server.js",
+  "bin": {
+    "opencode-amplifier": "./server.js"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "test": "./test.sh"
+  },
+  "keywords": [
+    "mcp",
+    "opencode",
+    "amplifier",
+    "ai",
+    "tools"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.21.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
