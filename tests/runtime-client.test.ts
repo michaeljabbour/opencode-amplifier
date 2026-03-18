@@ -242,13 +242,9 @@ test("StubRuntimeClient is disconnected by default", () => {
 
 test("StubRuntimeClient execute() throws RUNTIME_UNAVAILABLE when disconnected", async () => {
   const client = new StubRuntimeClient()
-  try {
-    await client.execute({ sessionId: "s1", input: "hello" })
-    throw new Error("should have thrown")
-  } catch (err) {
-    expect(err).toBeInstanceOf(Error)
-    expect((err as Error).message).toContain("RUNTIME_UNAVAILABLE")
-  }
+  await expect(
+    client.execute({ sessionId: "s1", input: "hello" })
+  ).rejects.toThrow("RUNTIME_UNAVAILABLE")
 })
 
 test("StubRuntimeClient connect() marks client as connected", async () => {
@@ -284,4 +280,22 @@ test("StubRuntimeClient status() returns initializing for a new session", async 
 test("StubRuntimeClient orchestrator() returns null in Phase 1", () => {
   const client = new StubRuntimeClient()
   expect(client.orchestrator()).toBeNull()
+})
+
+
+test("StubRuntimeClient disconnect() marks client as disconnected", async () => {
+  const client = new StubRuntimeClient()
+  await client.connect()
+  expect(client.isConnected()).toBe(true)
+  await client.disconnect()
+  expect(client.isConnected()).toBe(false)
+})
+
+test("StubRuntimeClient spawn() returns deterministic child session IDs", async () => {
+  const client = new StubRuntimeClient()
+  await client.connect()
+  const id1 = await client.spawn({ parentSessionId: "parent", agent: "coder" })
+  const id2 = await client.spawn({ parentSessionId: "parent", agent: "reviewer" })
+  expect(id1).toBe("stub-child-1")
+  expect(id2).toBe("stub-child-2")
 })
