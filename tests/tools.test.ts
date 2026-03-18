@@ -4,6 +4,12 @@ import {
   type BundleConfig,
 } from "../src/bundle/resolve.js"
 import { fallbackContext } from "../src/bundle/context.js"
+import {
+  discoverModes,
+  parseFrontmatter,
+  loadModeContent,
+  type ModeDefinition,
+} from "../src/modes/discovery.js"
 
 test("tools test infrastructure is working", () => {
   expect(true).toBe(true)
@@ -39,4 +45,39 @@ import { runPython } from "../src/bundle/_python.js"
 
 test("bundle private python helper is importable", () => {
   expect(typeof runPython).toBe("function")
+})
+
+test("discoverModes returns an array (may be empty if no cache)", () => {
+  const modes = discoverModes()
+  expect(Array.isArray(modes)).toBe(true)
+})
+
+test("parseFrontmatter extracts key-value pairs from frontmatter block", () => {
+  const content = `---
+name: brainstorm
+description: Design exploration mode
+shortcut: bs
+---
+# Body content here`
+  const fm = parseFrontmatter(content)
+  expect(fm.name).toBe("brainstorm")
+  expect(fm.description).toBe("Design exploration mode")
+  expect(fm.shortcut).toBe("bs")
+})
+
+test("parseFrontmatter returns empty object when no frontmatter present", () => {
+  const fm = parseFrontmatter("# No frontmatter here")
+  expect(Object.keys(fm)).toHaveLength(0)
+})
+
+test("ModeDefinition type has expected shape", () => {
+  const mode: ModeDefinition = {
+    name: "plan",
+    description: "Planning mode",
+    shortcut: "plan",
+    source: "superpowers",
+    filePath: "/tmp/modes/plan.md",
+  }
+  expect(mode.name).toBe("plan")
+  expect(mode.source).toBe("superpowers")
 })
