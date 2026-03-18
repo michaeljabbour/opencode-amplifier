@@ -3,8 +3,8 @@
   "version": "0.4.0",
   "type": "module",
   "main": "src/index.ts",
-  "description": "OpenCode plugin for amplifier-core: kernel primitives, bundle resolution, and CLI passthrough",
-  "keywords": ["opencode", "opencode-plugin", "amplifier", "amplifier-core"],
+  "description": "OpenCode plugin for the native Amplifier runtime: thin client, fail-closed bootstrap, and authoritative Amplifier-mode execution",
+  "keywords": ["opencode", "opencode-plugin", "amplifier", "amplifier-runtime"],
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -14,7 +14,18 @@
   "exports": {
     ".": "./src/index.ts"
   },
+  "scripts": {
+    "test": "bun test",
+    "test:hooks": "bun test tests/plugin-hooks.test.ts",
+    "test:runtime": "bun test tests/runtime-client.test.ts",
+    "test:tools": "bun test tests/tools.test.ts",
+    "typecheck": "bun tsc --noEmit"
+  },
   "peerDependencies": {
     "@opencode-ai/plugin": "*"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "latest"
   }
 }
