@@ -114,9 +114,23 @@ interface BundleConfig {
   }
 }
 
+function runPython(script: string, timeout = 30000): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const proc = spawn("python3", ["-c", script], { stdio: ["pipe", "pipe", "pipe"], timeout })
+    let stdout = "", stderr = ""
+    proc.stdout.on("data", (d: Buffer) => { stdout += d })
+    proc.stderr.on("data", (d: Buffer) => { stderr += d })
+    proc.on("close", (code) => {
+      if (code !== 0) return reject(new Error(stderr.trim() || `exit ${code}`))
+      resolve(stdout.trim())
+    })
+    proc.on("error", (e) => reject(new Error(`python: ${e.message}`)))
+  })
+}
+
 async function resolveBundle(bundleName: string, settings?: Record<string, unknown>): Promise<BundleConfig> {
   const settingsJson = JSON.stringify(settings ?? {})
-  const script = `
+  const raw = await runPython(`
 import json, sys, asyncio
 async def main():
     try:
@@ -138,26 +152,79 @@ async def main():
     except Exception as e:
         print(json.dumps({"error": str(e)})); sys.exit(1)
 asyncio.run(main())
-`
-  return new Promise((resolve, reject) => {
-    const proc = spawn("python3", ["-c", script], { stdio: ["pipe", "pipe", "pipe"], timeout: 30000 })
-    let stdout = "", stderr = ""
-    proc.stdout.on("data", (d: Buffer) => { stdout += d })
-    proc.stderr.on("data", (d: Buffer) => { stderr += d })
-    proc.on("close", (code) => {
-      if (code !== 0) return reject(new Error(stderr.trim() || `exit ${code}`))
-      try {
-        const r = JSON.parse(stdout.trim())
-        r.error ? reject(new Error(r.error)) : resolve(r)
-      } catch { reject(new Error(`bad output: ${stdout.slice(0, 200)}`)) }
-    })
-    proc.on("error", (e) => reject(new Error(`python: ${e.message}`)))
-  })
+`)
+  const r = JSON.parse(raw)
+  if (r.error) throw new Error(r.error)
+  return r
 }
 
 async function resolveBundleOrDefault(name: string, settings?: Record<string, unknown>): Promise<BundleConfig> {
   try { return await resolveBundle(name, settings) }
   catch { return { name, mount_plan: { tools: [], providers: [], hooks: [], context: [] } } }
+}
+
+// ─── Bundle Context Loader ──────────────────────────────────────────────────
+
+/**
+ * Load composed context from the resolved amplifier bundle.
+ * Extracts the actual system prompt, agent definitions, and context files
+ * from amplifier-foundation — the same content the CLI uses.
+ * Falls back to a minimal tool-awareness prompt if foundation isn't available.
+ */
+async function loadBundleContext(bundle: BundleConfig): Promise<string | null> {
+  try {
+    const raw = await runPython(`
+import json, os, importlib.resources
+
+pkg_path = str(importlib.resources.files("amplifier_foundation"))
+parts = []
+
+# Load core system context files
+for rel in [
+    "context/shared/common-system-base.md",
+    "context/agents/delegation-instructions.md",
+]:
+    path = os.path.join(pkg_path, rel)
+    if os.path.exists(path):
+        with open(path) as f:
+            parts.append(f.read())
+
+# Load agent summaries (name + description from frontmatter)
+agents_dir = os.path.join(pkg_path, "agents")
+summaries = []
+if os.path.isdir(agents_dir):
+    for fname in sorted(os.listdir(agents_dir)):
+        if not fname.endswith(".md"):
+            continue
+        name = fname.replace(".md", "")
+        desc = ""
+        with open(os.path.join(agents_dir, fname)) as f:
+            in_fm = False
+            for line in f:
+                line = line.strip()
+                if line == "---":
+                    in_fm = not in_fm
+                    continue
+                if in_fm and line.startswith("description:"):
+                    desc = line.split("description:", 1)[1].strip().strip("'\\"")
+                    break
+        if desc:
+            summaries.append(f"- foundation:{name}: {desc}")
+
+if summaries:
+    parts.append("# Available Agents\\n\\n" + "\\n".join(summaries))
+
+print(json.dumps({"context": "\\n\\n---\\n\\n".join(parts) if parts else None}))
+`, 15000)
+    const r = JSON.parse(raw)
+    return r.context ?? fallbackContext()
+  } catch {
+    return fallbackContext()
+  }
+}
+
+function fallbackContext(): string {
+  return `You have amplifier tools available (amplifier_status, amplifier_capability, amplifier_emit, amplifier_bundle_resolve, amplifier_init, amplifier_doctor, amplifier_bundle_list, amplifier_bundle_show, amplifier_bundle_use, amplifier_agents_list, amplifier_agents_show, amplifier_provider_list, amplifier_provider_use, amplifier_settings_get, amplifier_settings_set, amplifier_mode, amplifier_cli). Use these tools to answer questions about amplifier capabilities, agents, and bundles.`
 }
 
 // ─── Provider Mapping ───────────────────────────────────────────────────────
@@ -190,9 +257,10 @@ const AmplifierPlugin: Plugin = async (input: PluginInput) => {
   }))
   session.setInitialized()
 
-  // Resolve bundle (non-blocking, falls back to empty)
+  // Resolve bundle and compose context from amplifier-foundation
   const bundle = await resolveBundleOrDefault("foundation")
   const bundleProviders = bundle.mount_plan.providers
+  const bundleContext = await loadBundleContext(bundle)
 
   // Inject bundle provider API keys into env
   for (const bp of bundleProviders) {
@@ -203,9 +271,21 @@ const AmplifierPlugin: Plugin = async (input: PluginInput) => {
     if (key && !process.env[envVar]) process.env[envVar] = key
   }
 
-  // Helper
+  // Track active state on kernel
+  coord.registerCapability("active.bundle", bundle.name)
+  coord.registerCapability("active.mode", "default")
+  coord.registerCapability("active.provider", bundleProviders[0]?.module ?? "none")
+
+  // Helpers
   async function emit(event: string, data: Record<string, unknown>): Promise<HookResult | null> {
     try { return await coord.hooks.emit(event, JSON.stringify(data)) } catch { return null }
+  }
+
+  function runCli(command: string, cwd: string): Promise<string> {
+    return new Promise<string>((resolve) => {
+      exec(`amplifier ${command}`, { cwd, timeout: 30000, env: { ...process.env, FORCE_COLOR: "0" } },
+        (err, stdout, stderr) => resolve(err ? `error: ${stderr.trim() || err.message}` : stdout.trim() || "(no output)"))
+    })
   }
 
   // ─── Hooks ──────────────────────────────────────────────────────────────
@@ -227,6 +307,10 @@ const AmplifierPlugin: Plugin = async (input: PluginInput) => {
     },
 
     "experimental.chat.system.transform": async (inp, out) => {
+      // Inject context composed from the resolved amplifier bundle
+      if (bundleContext) out.system.push(bundleContext)
+
+      // Allow kernel hooks to inject additional context
       const r = await emit("provider:system", { session_id: inp.sessionID ?? "", model: inp.model.id, provider: inp.model.providerID })
       if (r?.action === "InjectContext" && r.contextInjection) out.system.push(r.contextInjection)
     },
@@ -254,15 +338,20 @@ const AmplifierPlugin: Plugin = async (input: PluginInput) => {
 
   const tools: Record<string, ToolDefinition> = {
     amplifier_status: tool({
-      description: "Show amplifier kernel status: session, capabilities, hooks, bundle providers.",
+      description: "Show amplifier kernel status: session, active bundle/mode/provider, capabilities, hooks, bundle providers.",
       args: {},
       async execute() {
         return JSON.stringify({
           sessionId: session.sessionId, parentId: session.parentId, status: session.status,
-          isInitialized: session.isInitialized, hooks: coord.hooks.listHandlers(),
+          isInitialized: session.isInitialized,
+          activeBundle: coord.getCapability("active.bundle"),
+          activeMode: coord.getCapability("active.mode"),
+          activeProvider: coord.getCapability("active.provider"),
+          hooks: coord.hooks.listHandlers(),
           capabilities: coord.toDict(), bundleProviders: bundleProviders.map((p) => ({
             module: p.module, opencode_provider: PROVIDER_MAP[p.module] ?? null,
           })),
+          bundleContext: bundleContext ? `(${bundleContext.length} chars loaded from foundation)` : "(fallback)",
         }, null, 2)
       },
     }),
@@ -308,16 +397,134 @@ const AmplifierPlugin: Plugin = async (input: PluginInput) => {
       },
     }),
 
-    amplifier_cli: tool({
-      description: "Run an amplifier CLI command (init, bundle list, provider list, settings get, doctor, etc).",
+    amplifier_init: tool({
+      description: "Initialize amplifier in the current project. Creates config files and sets up the project for amplifier usage.",
       args: {
-        command: tool.schema.string().describe("CLI command after 'amplifier' (e.g. 'bundle list', 'provider use anthropic')"),
+        wizard: tool.schema.boolean().optional().describe("Run interactive setup wizard"),
       },
       async execute(args, ctx) {
-        return new Promise<string>((resolve) => {
-          exec(`amplifier ${args.command}`, { cwd: ctx.directory, timeout: 30000, env: { ...process.env, FORCE_COLOR: "0" } },
-            (err, stdout, stderr) => resolve(err ? `error: ${stderr.trim() || err.message}` : stdout.trim() || "(no output)"))
-        })
+        return runCli(`init${args.wizard ? " --wizard" : ""}`, ctx.directory)
+      },
+    }),
+
+    amplifier_doctor: tool({
+      description: "Diagnose amplifier configuration issues. Checks installation, config, providers, and connectivity.",
+      args: {
+        fix: tool.schema.boolean().optional().describe("Automatically fix issues found"),
+      },
+      async execute(args, ctx) {
+        return runCli(`doctor${args.fix ? " --fix" : ""}`, ctx.directory)
+      },
+    }),
+
+    amplifier_bundle_list: tool({
+      description: "List all available amplifier bundles with their descriptions and status.",
+      args: {},
+      async execute(_args, ctx) {
+        return runCli("bundle list", ctx.directory)
+      },
+    }),
+
+    amplifier_bundle_show: tool({
+      description: "Show details of an amplifier bundle including its mount plan, tools, hooks, agents, and context.",
+      args: {
+        name: tool.schema.string().describe("Bundle name (e.g. 'foundation', 'coding', 'amplifier-dev')"),
+      },
+      async execute(args, ctx) {
+        return runCli(`bundle show ${args.name}`, ctx.directory)
+      },
+    }),
+
+    amplifier_bundle_use: tool({
+      description: "Switch the active amplifier bundle. Changes which tools, agents, and context are available.",
+      args: {
+        name: tool.schema.string().describe("Bundle name to activate"),
+      },
+      async execute(args, ctx) {
+        const result = await runCli(`bundle use ${args.name}`, ctx.directory)
+        if (!result.startsWith("error:")) coord.registerCapability("active.bundle", args.name)
+        return result
+      },
+    }),
+
+    amplifier_agents_list: tool({
+      description: "List all available amplifier agents/experts with their names and descriptions.",
+      args: {},
+      async execute(_args, ctx) {
+        return runCli("agents list", ctx.directory)
+      },
+    }),
+
+    amplifier_agents_show: tool({
+      description: "Show detailed information about a specific amplifier agent including its instructions and capabilities.",
+      args: {
+        name: tool.schema.string().describe("Agent name (e.g. 'coder', 'reviewer', 'planner')"),
+      },
+      async execute(args, ctx) {
+        return runCli(`agents show ${args.name}`, ctx.directory)
+      },
+    }),
+
+    amplifier_provider_list: tool({
+      description: "List all configured amplifier providers with their status and active model.",
+      args: {},
+      async execute(_args, ctx) {
+        return runCli("provider list", ctx.directory)
+      },
+    }),
+
+    amplifier_provider_use: tool({
+      description: "Switch the active amplifier provider.",
+      args: {
+        name: tool.schema.string().describe("Provider name (e.g. 'anthropic', 'openai', 'google')"),
+      },
+      async execute(args, ctx) {
+        const result = await runCli(`provider use ${args.name}`, ctx.directory)
+        if (!result.startsWith("error:")) coord.registerCapability("active.provider", args.name)
+        return result
+      },
+    }),
+
+    amplifier_settings_get: tool({
+      description: "Show current amplifier settings.",
+      args: {
+        key: tool.schema.string().optional().describe("Specific setting key to get (omit for all settings)"),
+      },
+      async execute(args, ctx) {
+        return runCli(`settings get${args.key ? ` ${args.key}` : ""}`, ctx.directory)
+      },
+    }),
+
+    amplifier_settings_set: tool({
+      description: "Update an amplifier setting.",
+      args: {
+        key: tool.schema.string().describe("Setting key"),
+        value: tool.schema.string().describe("Setting value"),
+      },
+      async execute(args, ctx) {
+        return runCli(`settings set ${args.key} ${args.value}`, ctx.directory)
+      },
+    }),
+
+    amplifier_mode: tool({
+      description: "Switch amplifier mode (e.g. plan, review, code, debug). Changes how the agent approaches tasks.",
+      args: {
+        mode: tool.schema.string().describe("Mode name (e.g. 'plan', 'review', 'code', 'debug')"),
+      },
+      async execute(args, ctx) {
+        const result = await runCli(`run --mode ${args.mode}`, ctx.directory)
+        if (!result.startsWith("error:")) coord.registerCapability("active.mode", args.mode)
+        return result
+      },
+    }),
+
+    amplifier_cli: tool({
+      description: "Run any amplifier CLI command not covered by dedicated tools. Escape hatch for advanced usage.",
+      args: {
+        command: tool.schema.string().describe("CLI command after 'amplifier' (e.g. 'config show', 'cache clear')"),
+      },
+      async execute(args, ctx) {
+        return runCli(args.command, ctx.directory)
       },
     }),
   }
