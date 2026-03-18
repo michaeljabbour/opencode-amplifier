@@ -6,9 +6,8 @@
  */
 
 import { tool } from "@opencode-ai/plugin"
-import type { AmplifierSession } from "../kernel/session.js"
+import type { AmplifierSession, HookResult } from "../kernel/session.js"
 import type { RuntimeContract } from "../runtime/contracts.js"
-import type { HookResult } from "../kernel/session.js"
 import { PROVIDER_MAP } from "../providers/mapping.js"
 
 export function buildStatusTools(
@@ -24,7 +23,11 @@ export function buildStatusTools(
   const { bundleProviders = [], bundleContext = null, availableModes = [] } = extras
 
   async function emit(event: string, data: Record<string, unknown>): Promise<HookResult | null> {
-    try { return await coord.hooks.emit(event, JSON.stringify(data)) } catch { return null }
+    try { return await coord.hooks.emit(event, JSON.stringify(data)) }
+    catch (e) {
+      console.error("[amplifier] emit hook failed:", (e as Error).message)
+      return null
+    }
   }
 
   return {

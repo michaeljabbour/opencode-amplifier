@@ -185,3 +185,40 @@ test("amplifier_status includes runtimeConnected field", async () => {
   expect(typeof parsed.runtimeConnected).toBe("boolean")
   expect(parsed.runtimeConnected).toBe(false) // StubRuntimeClient starts disconnected
 })
+
+test("amplifier_capability list action returns JSON of capabilities", async () => {
+  const session = new AmplifierSession()
+  const client = new StubRuntimeClient()
+  const buildStatusTools = await loadBuildStatusTools()
+  const tools = buildStatusTools(session, client)
+  const result = await tools.amplifier_capability.execute({ action: "list" }, {} as any)
+  expect(() => JSON.parse(result as string)).not.toThrow()
+})
+
+test("amplifier_capability get action returns capability value", async () => {
+  const session = new AmplifierSession()
+  session.coordinator.registerCapability("test.key", "test-value")
+  const client = new StubRuntimeClient()
+  const buildStatusTools = await loadBuildStatusTools()
+  const tools = buildStatusTools(session, client)
+  const result = await tools.amplifier_capability.execute({ action: "get", name: "test.key" }, {} as any)
+  expect(result).toBe("test-value")
+})
+
+test("amplifier_capability returns name required when name is missing", async () => {
+  const session = new AmplifierSession()
+  const client = new StubRuntimeClient()
+  const buildStatusTools = await loadBuildStatusTools()
+  const tools = buildStatusTools(session, client)
+  const result = await tools.amplifier_capability.execute({ action: "get" }, {} as any)
+  expect(result).toBe("name required")
+})
+
+test("amplifier_emit execute() returns error string on invalid JSON payload", async () => {
+  const session = new AmplifierSession()
+  const client = new StubRuntimeClient()
+  const buildStatusTools = await loadBuildStatusTools()
+  const tools = buildStatusTools(session, client)
+  const result = await tools.amplifier_emit.execute({ event: "test.event", data: "not-json" }, {} as any)
+  expect(result as string).toMatch(/^error:/)
+})
