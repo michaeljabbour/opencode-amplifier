@@ -86,6 +86,7 @@ test("ModeDefinition type has expected shape", () => {
   expect(mode.name).toBe("plan")
   expect(mode.source).toBe("superpowers")
 })
+
 test("loadModeContent returns null for a non-existent path", () => {
   const result = loadModeContent("/tmp/amplifier-nonexistent-mode-file.md")
   expect(result).toBeNull()
@@ -100,6 +101,14 @@ test("PROVIDER_MAP maps anthropic bundle module to opencode provider name", () =
 test("PROVIDER_ENV maps anthropic bundle module to API key env var name", () => {
   expect(PROVIDER_ENV["provider-anthropic"]).toBe("ANTHROPIC_API_KEY")
   expect(PROVIDER_ENV["provider-openai"]).toBe("OPENAI_API_KEY")
+})
+
+test("PROVIDER_MAP and PROVIDER_ENV have matching keys for all 14 providers", () => {
+  const mapKeys = Object.keys(PROVIDER_MAP).sort()
+  const envKeys = Object.keys(PROVIDER_ENV).sort()
+  expect(mapKeys).toHaveLength(14)
+  expect(envKeys).toHaveLength(14)
+  expect(mapKeys).toEqual(envKeys)
 })
 
 test("resolveProviderEnvKey extracts literal key from config", () => {

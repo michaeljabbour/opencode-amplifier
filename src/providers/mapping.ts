@@ -46,9 +46,11 @@ export const PROVIDER_ENV: Record<string, string> = {
  * Otherwise returns the literal value.
  */
 export function resolveProviderEnvKey(config: Record<string, unknown>): string | undefined {
-  let key = config?.api_key as string | undefined
-  if (key?.startsWith("${") && key.endsWith("}")) {
-    key = process.env[key.slice(2, -1)]
+  const raw = config.api_key
+  if (typeof raw !== "string" || !raw) return undefined
+  let key: string = raw
+  if (key.startsWith("${") && key.endsWith("}")) {
+    return process.env[key.slice(2, -1)]
   }
-  return key || undefined
+  return key
 }
