@@ -27,6 +27,11 @@ import type {
 } from "../src/runtime/events.js"
 import { StubTransport } from "../src/runtime/transport.js"
 import type { RuntimeTransport } from "../src/runtime/transport.js"
+import {
+  StubProcessManager,
+  ProcessManagerError,
+} from "../src/runtime/process-manager.js"
+import type { ProcessManagerConfig } from "../src/runtime/process-manager.js"
 
 // This file will grow with each runtime-boundary task.
 // For now, a canary test verifies the test runner works.
@@ -177,4 +182,43 @@ test("StubTransport emitEvent() is a no-op for unregistered session", () => {
   const t = new StubTransport()
   // Should not throw
   t.emitEvent("not-subscribed", { type: "runtime.ready", timestamp: Date.now(), payload: { version: "0.1.0" } })
+})
+
+test("StubProcessManager is not running by default", () => {
+  const pm = new StubProcessManager()
+  expect(pm.isRunning()).toBe(false)
+})
+
+test("StubProcessManager start() succeeds with valid config", async () => {
+  const pm = new StubProcessManager()
+  const config: ProcessManagerConfig = {
+    runtimeBinary: "amplifier-runtime",
+    socketPath: "/tmp/amplifier-test.sock",
+    startTimeoutMs: 5000,
+  }
+  const handle = await pm.start(config)
+  expect(handle.socketPath).toBe("/tmp/amplifier-test.sock")
+  expect(pm.isRunning()).toBe(true)
+})
+
+test("StubProcessManager start() fails when binary not found and connectToExisting is false", async () => {
+  const pm = new StubProcessManager({ simulateBinaryMissing: true })
+  const config: ProcessManagerConfig = {
+    runtimeBinary: "amplifier-runtime",
+    socketPath: "/tmp/amplifier-test.sock",
+    connectToExisting: false,
+  }
+  await expect(pm.start(config)).rejects.toThrow(ProcessManagerError)
+})
+
+test("StubProcessManager connectExisting() works when simulated running", async () => {
+  const pm = new StubProcessManager({ simulateExistingSocket: "/tmp/existing.sock" })
+  const handle = await pm.connectExisting("/tmp/existing.sock")
+  expect(handle.socketPath).toBe("/tmp/existing.sock")
+  expect(pm.isRunning()).toBe(true)
+})
+
+test("StubProcessManager connectExisting() throws when socket not found", async () => {
+  const pm = new StubProcessManager()
+  await expect(pm.connectExisting("/tmp/missing.sock")).rejects.toThrow(ProcessManagerError)
 })
