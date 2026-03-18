@@ -40,3 +40,14 @@ test("HookRegistry returns Continue action when no handlers registered", async (
   const result = await registry.emit("test:event", JSON.stringify({ data: "x" }))
   expect(result.action).toBe("Continue")
 })
+
+test("CancellationToken requestImmediate() sets cancelled state unconditionally", () => {
+  const token = new CancellationToken()
+  token.requestGraceful()
+  expect(token.isCancelled).toBe(true)
+  token.requestImmediate()   // should overwrite graceful → immediate
+  expect(token.isCancelled).toBe(true)
+  token.reset()
+  token.requestImmediate()   // should work from "none" state too
+  expect(token.isCancelled).toBe(true)
+})

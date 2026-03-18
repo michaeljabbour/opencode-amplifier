@@ -15,7 +15,7 @@
 
 import { randomUUID } from "crypto"
 
-// Copy exactly from src/index.ts lines 20-106 — do not modify the logic.
+// Verbatim from src/index.ts kernel primitives — do not modify logic here.
 
 export type HookAction = "Continue" | "Deny" | "Modify" | "InjectContext" | "AskUser"
 
