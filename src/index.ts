@@ -507,9 +507,9 @@ const AmplifierPlugin: Plugin = async (input: PluginInput) => {
     }),
 
     amplifier_mode: tool({
-      description: "Switch amplifier mode (e.g. plan, review, code, debug). Changes how the agent approaches tasks.",
+      description: "Switch amplifier run mode. Available modes: chat (interactive), single (one-shot prompt/response).",
       args: {
-        mode: tool.schema.string().describe("Mode name (e.g. 'plan', 'review', 'code', 'debug')"),
+        mode: tool.schema.string().describe("Mode name: 'chat' or 'single'"),
       },
       async execute(args, ctx) {
         const result = await runCli(`run --mode ${args.mode}`, ctx.directory)
