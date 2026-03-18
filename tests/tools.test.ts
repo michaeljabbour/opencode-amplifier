@@ -222,3 +222,28 @@ test("amplifier_emit execute() returns error string on invalid JSON payload", as
   const result = await tools.amplifier_emit.execute({ event: "test.event", data: "not-json" }, {} as any)
   expect(result as string).toMatch(/^error:/)
 })
+
+test("amplifier_capability set action registers capability and returns confirmation", async () => {
+  const session = new AmplifierSession()
+  const client = new StubRuntimeClient()
+  const buildStatusTools = await loadBuildStatusTools()
+  const tools = buildStatusTools(session, client)
+  const result = await tools.amplifier_capability.execute(
+    { action: "set", name: "my.key", value: "my-value" },
+    {} as any,
+  )
+  expect(result).toBe("set 'my.key'")
+  expect(session.coordinator.getCapability("my.key")).toBe("my-value")
+})
+
+test("amplifier_capability set action returns value required when value is missing", async () => {
+  const session = new AmplifierSession()
+  const client = new StubRuntimeClient()
+  const buildStatusTools = await loadBuildStatusTools()
+  const tools = buildStatusTools(session, client)
+  const result = await tools.amplifier_capability.execute(
+    { action: "set", name: "my.key" },
+    {} as any,
+  )
+  expect(result).toBe("value required")
+})
