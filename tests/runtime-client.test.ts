@@ -201,12 +201,11 @@ test("StubProcessManager start() succeeds with valid config", async () => {
   expect(pm.isRunning()).toBe(true)
 })
 
-test("StubProcessManager start() fails when binary not found and connectToExisting is false", async () => {
+test("StubProcessManager start() throws BINARY_NOT_FOUND when binary is missing", async () => {
   const pm = new StubProcessManager({ simulateBinaryMissing: true })
   const config: ProcessManagerConfig = {
     runtimeBinary: "amplifier-runtime",
     socketPath: "/tmp/amplifier-test.sock",
-    connectToExisting: false,
   }
   await expect(pm.start(config)).rejects.toThrow(ProcessManagerError)
 })
@@ -221,4 +220,15 @@ test("StubProcessManager connectExisting() works when simulated running", async 
 test("StubProcessManager connectExisting() throws when socket not found", async () => {
   const pm = new StubProcessManager()
   await expect(pm.connectExisting("/tmp/missing.sock")).rejects.toThrow(ProcessManagerError)
+})
+
+test("StubProcessManager handle.stop() transitions isRunning to false", async () => {
+  const pm = new StubProcessManager()
+  const handle = await pm.start({
+    runtimeBinary: "amplifier-runtime",
+    socketPath: "/tmp/amplifier-test.sock",
+  })
+  expect(pm.isRunning()).toBe(true)
+  await handle.stop()
+  expect(pm.isRunning()).toBe(false)
 })
