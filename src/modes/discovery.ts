@@ -43,7 +43,9 @@ export function discoverModes(): ModeDefinition[] {
         })
       }
     }
-  } catch {}
+  } catch (e) {
+    console.error("[amplifier] discoverModes cache traversal failed:", (e as Error).message)
+  }
   return modes
 }
 
@@ -67,5 +69,8 @@ export function loadModeContent(filePath: string): string | null {
   try {
     const content = readFileSync(filePath, "utf-8")
     return content.replace(/^---\n[\s\S]*?\n---\n*/, "").trim() || null
-  } catch { return null }
+  } catch (e) {
+    console.error("[amplifier] loadModeContent failed:", (e as Error).message)
+    return null
+  }
 }

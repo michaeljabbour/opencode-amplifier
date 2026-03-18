@@ -4,6 +4,7 @@ import {
   type BundleConfig,
 } from "../src/bundle/resolve.js"
 import { fallbackContext } from "../src/bundle/context.js"
+import { runPython } from "../src/bundle/_python.js"
 import {
   discoverModes,
   parseFrontmatter,
@@ -41,7 +42,6 @@ test("BundleConfig type has expected shape", () => {
   expect(config.mount_plan.tools).toHaveLength(1)
 })
 
-import { runPython } from "../src/bundle/_python.js"
 
 test("bundle private python helper is importable", () => {
   expect(typeof runPython).toBe("function")
@@ -80,4 +80,8 @@ test("ModeDefinition type has expected shape", () => {
   }
   expect(mode.name).toBe("plan")
   expect(mode.source).toBe("superpowers")
+})
+test("loadModeContent returns null for a non-existent path", () => {
+  const result = loadModeContent("/tmp/amplifier-nonexistent-mode-file.md")
+  expect(result).toBeNull()
 })
