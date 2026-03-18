@@ -11,6 +11,11 @@ import {
   loadModeContent,
   type ModeDefinition,
 } from "../src/modes/discovery.js"
+import {
+  PROVIDER_MAP,
+  PROVIDER_ENV,
+  resolveProviderEnvKey,
+} from "../src/providers/mapping.js"
 
 test("tools test infrastructure is working", () => {
   expect(true).toBe(true)
@@ -84,4 +89,32 @@ test("ModeDefinition type has expected shape", () => {
 test("loadModeContent returns null for a non-existent path", () => {
   const result = loadModeContent("/tmp/amplifier-nonexistent-mode-file.md")
   expect(result).toBeNull()
+})
+
+test("PROVIDER_MAP maps anthropic bundle module to opencode provider name", () => {
+  expect(PROVIDER_MAP["provider-anthropic"]).toBe("anthropic")
+  expect(PROVIDER_MAP["provider-openai"]).toBe("openai")
+  expect(PROVIDER_MAP["provider-google"]).toBe("google")
+})
+
+test("PROVIDER_ENV maps anthropic bundle module to API key env var name", () => {
+  expect(PROVIDER_ENV["provider-anthropic"]).toBe("ANTHROPIC_API_KEY")
+  expect(PROVIDER_ENV["provider-openai"]).toBe("OPENAI_API_KEY")
+})
+
+test("resolveProviderEnvKey extracts literal key from config", () => {
+  const key = resolveProviderEnvKey({ api_key: "sk-abc123" })
+  expect(key).toBe("sk-abc123")
+})
+
+test("resolveProviderEnvKey resolves env var reference in config", () => {
+  process.env["_TEST_API_KEY_"] = "test-key-value"
+  const key = resolveProviderEnvKey({ api_key: "${_TEST_API_KEY_}" })
+  expect(key).toBe("test-key-value")
+  delete process.env["_TEST_API_KEY_"]
+})
+
+test("resolveProviderEnvKey returns undefined for missing env var reference", () => {
+  const key = resolveProviderEnvKey({ api_key: "${DEFINITELY_NOT_SET_XYZ}" })
+  expect(key).toBeUndefined()
 })
