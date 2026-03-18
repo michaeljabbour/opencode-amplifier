@@ -25,6 +25,8 @@ import type {
   RuntimeReadyEvent,
   RuntimeDiagnosticEvent,
 } from "../src/runtime/events.js"
+import { StubTransport } from "../src/runtime/transport.js"
+import type { RuntimeTransport } from "../src/runtime/transport.js"
 
 // This file will grow with each runtime-boundary task.
 // For now, a canary test verifies the test runner works.
@@ -118,4 +120,37 @@ test("runtime events module exports required event types", async () => {
   expect(streaming.payload.delta).toBe("hello")
   expect(approval.payload.requestId).toBe("r1")
   expect(routing.payload.type).toBe("reasoning")
+})
+
+
+test("StubTransport is disconnected by default", () => {
+  const t = new StubTransport()
+  expect(t.isConnected()).toBe(false)
+})
+
+test("StubTransport connect() marks it as connected", async () => {
+  const t = new StubTransport()
+  await t.connect("/tmp/fake.sock")
+  expect(t.isConnected()).toBe(true)
+})
+
+test("StubTransport send() throws when disconnected", async () => {
+  const t = new StubTransport()
+  await expect(
+    t.send({ id: "1", method: "runtime.status", params: {} })
+  ).rejects.toThrow("Transport not connected")
+})
+
+test("StubTransport send() returns queued response when connected", async () => {
+  const t = new StubTransport()
+  t.queueResponse({ id: "1", result: { version: "0.1.0" } })
+  await t.connect("/tmp/fake.sock")
+  const response = await t.send({ id: "1", method: "runtime.status", params: {} })
+  expect(response.result).toEqual({ version: "0.1.0" })
+})
+
+test("transport interface is structurally complete", () => {
+  // If this compiles, the interface has all required methods
+  const _check: RuntimeTransport = new StubTransport()
+  expect(_check.isConnected()).toBe(false)
 })
