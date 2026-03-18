@@ -154,3 +154,27 @@ test("transport interface is structurally complete", () => {
   const _check: RuntimeTransport = new StubTransport()
   expect(_check.isConnected()).toBe(false)
 })
+
+test("StubTransport emitEvent() delivers to subscribed handler", async () => {
+  const t = new StubTransport()
+  await t.connect("/tmp/fake.sock")
+
+  const received: RuntimeEvent[] = []
+  const unsub = t.subscribe("s1", (e) => received.push(e))
+
+  const event: RuntimeReadyEvent = { type: "runtime.ready", timestamp: Date.now(), payload: { version: "0.1.0" } }
+  t.emitEvent("s1", event)
+
+  expect(received).toHaveLength(1)
+  expect(received[0].type).toBe("runtime.ready")
+
+  unsub()
+  t.emitEvent("s1", event)
+  expect(received).toHaveLength(1)
+})
+
+test("StubTransport emitEvent() is a no-op for unregistered session", () => {
+  const t = new StubTransport()
+  // Should not throw
+  t.emitEvent("not-subscribed", { type: "runtime.ready", timestamp: Date.now(), payload: { version: "0.1.0" } })
+})

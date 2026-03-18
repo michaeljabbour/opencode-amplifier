@@ -72,6 +72,17 @@ export class StubTransport implements RuntimeTransport {
     return Promise.resolve({ id: message.id, result: null })
   }
 
+  /**
+   * Subscribe to events for a session.
+   *
+   * NOTE: StubTransport supports only ONE handler per sessionId.
+   * A second call to subscribe() for the same sessionId silently replaces
+   * the first handler. This is intentional for the stub — it keeps the
+   * implementation minimal for testing. The real SocketTransport (Phase 2)
+   * will support multiple handlers per session.
+   *
+   * Returns an unsubscribe function. Call it to stop receiving events.
+   */
   subscribe(sessionId: string, handler: (event: RuntimeEvent) => void): () => void {
     this.subscriptions.set(sessionId, handler)
     return () => {
