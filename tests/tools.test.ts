@@ -28,6 +28,10 @@ mock.module("@opencode-ai/plugin", () => ({
         enum: (_values: string[]) => ({
           describe() { return this },
         }),
+        boolean: () => ({
+          optional() { return this },
+          describe() { return this },
+        }),
         string: () => ({
           optional() { return this },
           describe() { return this },
@@ -39,6 +43,34 @@ mock.module("@opencode-ai/plugin", () => ({
 
 async function loadBuildStatusTools() {
   return (await import("../src/tools/status.js")).buildStatusTools
+}
+
+async function loadBuildBundleTools() {
+  return (await import("../src/tools/bundle.js")).buildBundleTools
+}
+
+async function loadBuildProviderTools() {
+  return (await import("../src/tools/provider.js")).buildProviderTools
+}
+
+async function loadBuildModeTools() {
+  return (await import("../src/tools/mode.js")).buildModeTools
+}
+
+async function loadBuildSettingsTools() {
+  return (await import("../src/tools/settings.js")).buildSettingsTools
+}
+
+async function loadBuildDiagnosticsTools() {
+  return (await import("../src/tools/diagnostics.js")).buildDiagnosticsTools
+}
+
+async function loadBuildCliTool() {
+  return (await import("../src/tools/cli.js")).buildCliTool
+}
+
+function makeRunCli(output: string) {
+  return (_cmd: string, _cwd: string) => Promise.resolve(output)
 }
 
 test("tools test infrastructure is working", () => {
@@ -246,4 +278,67 @@ test("amplifier_capability set action returns value required when value is missi
     {} as any,
   )
   expect(result).toBe("value required")
+})
+
+
+test("buildBundleTools returns amplifier_bundle_resolve, _list, _show, _use, _current", async () => {
+  const session = new AmplifierSession()
+  const buildBundleTools = await loadBuildBundleTools()
+  const tools = buildBundleTools(session.coordinator, makeRunCli("ok"))
+  expect(typeof tools.amplifier_bundle_resolve).toBe("object")
+  expect(typeof tools.amplifier_bundle_list).toBe("object")
+  expect(typeof tools.amplifier_bundle_show).toBe("object")
+  expect(typeof tools.amplifier_bundle_use).toBe("object")
+  expect(typeof tools.amplifier_bundle_current).toBe("object")
+})
+
+test("buildProviderTools returns amplifier_provider_list and _use", async () => {
+  const session = new AmplifierSession()
+  const buildProviderTools = await loadBuildProviderTools()
+  const tools = buildProviderTools(session.coordinator, makeRunCli("ok"))
+  expect(typeof tools.amplifier_provider_list).toBe("object")
+  expect(typeof tools.amplifier_provider_use).toBe("object")
+})
+
+test("buildModeTools returns amplifier_modes_list and amplifier_mode", async () => {
+  const session = new AmplifierSession()
+  const availableModes: ModeDefinition[] = [{
+    name: "plan",
+    description: "Planning mode",
+    shortcut: "plan",
+    source: "superpowers",
+    filePath: "/tmp/plan.md",
+  }]
+  const buildModeTools = await loadBuildModeTools()
+  const { tools } = buildModeTools(session.coordinator, availableModes, () => "Mode content")
+  expect(typeof tools.amplifier_modes_list).toBe("object")
+  expect(typeof tools.amplifier_mode).toBe("object")
+})
+
+test("buildSettingsTools returns amplifier_settings_get and _set", async () => {
+  const buildSettingsTools = await loadBuildSettingsTools()
+  const tools = buildSettingsTools(makeRunCli("ok"))
+  expect(typeof tools.amplifier_settings_get).toBe("object")
+  expect(typeof tools.amplifier_settings_set).toBe("object")
+})
+
+test("buildDiagnosticsTools returns amplifier_init and amplifier_doctor", async () => {
+  const buildDiagnosticsTools = await loadBuildDiagnosticsTools()
+  const tools = buildDiagnosticsTools(makeRunCli("ok"))
+  expect(typeof tools.amplifier_init).toBe("object")
+  expect(typeof tools.amplifier_doctor).toBe("object")
+})
+
+test("buildCliTool returns amplifier_cli", async () => {
+  const buildCliTool = await loadBuildCliTool()
+  const tools = buildCliTool(makeRunCli("ok"))
+  expect(typeof tools.amplifier_cli).toBe("object")
+})
+
+test("amplifier_agents_list and amplifier_agents_show are part of buildBundleTools", async () => {
+  const session = new AmplifierSession()
+  const buildBundleTools = await loadBuildBundleTools()
+  const tools = buildBundleTools(session.coordinator, makeRunCli("ok"))
+  expect(typeof tools.amplifier_agents_list).toBe("object")
+  expect(typeof tools.amplifier_agents_show).toBe("object")
 })
