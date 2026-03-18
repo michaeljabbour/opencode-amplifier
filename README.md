@@ -65,7 +65,7 @@ The plugin loads automatically. Verify with:
 
 | Tool | Description |
 |------|-------------|
-| `amplifier_status` | Show kernel status: session, active bundle/mode/provider, capabilities, hooks |
+| `amplifier_status` | Show kernel status: session, active bundle/provider, capabilities, hooks |
 | `amplifier_capability` | Get, set, or list capabilities on the coordinator |
 | `amplifier_emit` | Emit a hook event and return the aggregated result |
 | `amplifier_bundle_resolve` | Resolve an amplifier-foundation bundle and show its mount plan |
@@ -80,7 +80,7 @@ The plugin loads automatically. Verify with:
 | `amplifier_provider_use` | Switch the active provider |
 | `amplifier_settings_get` | Show current settings |
 | `amplifier_settings_set` | Update a setting |
-| `amplifier_mode` | Switch mode (plan, review, code, debug, etc.) |
+| `amplifier_bundle_current` | Show the currently active bundle and configuration mode |
 | `amplifier_cli` | Escape hatch: run any amplifier CLI command |
 
 ### Hook integration
@@ -98,7 +98,6 @@ The plugin hooks into OpenCode's lifecycle automatically:
 The kernel tracks active state on the coordinator:
 
 - `active.bundle` — set on init, updated by `amplifier_bundle_use`
-- `active.mode` — defaults to `"default"`, updated by `amplifier_mode`
 - `active.provider` — set from bundle, updated by `amplifier_provider_use`
 
 All reported by `amplifier_status`.

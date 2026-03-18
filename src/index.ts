@@ -273,7 +273,6 @@ const AmplifierPlugin: Plugin = async (input: PluginInput) => {
 
   // Track active state on kernel
   coord.registerCapability("active.bundle", bundle.name)
-  coord.registerCapability("active.mode", "default")
   coord.registerCapability("active.provider", bundleProviders[0]?.module ?? "none")
 
   // Helpers
@@ -345,7 +344,6 @@ const AmplifierPlugin: Plugin = async (input: PluginInput) => {
           sessionId: session.sessionId, parentId: session.parentId, status: session.status,
           isInitialized: session.isInitialized,
           activeBundle: coord.getCapability("active.bundle"),
-          activeMode: coord.getCapability("active.mode"),
           activeProvider: coord.getCapability("active.provider"),
           hooks: coord.hooks.listHandlers(),
           capabilities: coord.toDict(), bundleProviders: bundleProviders.map((p) => ({
@@ -506,15 +504,11 @@ const AmplifierPlugin: Plugin = async (input: PluginInput) => {
       },
     }),
 
-    amplifier_mode: tool({
-      description: "Switch amplifier run mode. Available modes: chat (interactive), single (one-shot prompt/response).",
-      args: {
-        mode: tool.schema.string().describe("Mode name: 'chat' or 'single'"),
-      },
-      async execute(args, ctx) {
-        const result = await runCli(`run --mode ${args.mode}`, ctx.directory)
-        if (!result.startsWith("error:")) coord.registerCapability("active.mode", args.mode)
-        return result
+    amplifier_bundle_current: tool({
+      description: "Show the currently active bundle and configuration mode.",
+      args: {},
+      async execute(_args, ctx) {
+        return runCli("bundle current", ctx.directory)
       },
     }),
 
