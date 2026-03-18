@@ -34,3 +34,9 @@ test("BundleConfig type has expected shape", () => {
   expect(config.name).toBe("foundation")
   expect(config.mount_plan.tools).toHaveLength(1)
 })
+
+import { runPython } from "../src/bundle/_python.js"
+
+test("bundle private python helper is importable", () => {
+  expect(typeof runPython).toBe("function")
+})

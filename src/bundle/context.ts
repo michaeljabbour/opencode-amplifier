@@ -6,22 +6,8 @@
  * Phase 2: replace with runtime event stream projection.
  */
 
-import { spawn } from "child_process"
+import { runPython } from "./_python.js"
 import type { BundleConfig } from "./resolve.js"
-
-function runPython(script: string, timeout = 30000): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const proc = spawn("python3", ["-c", script], { stdio: ["pipe", "pipe", "pipe"], timeout })
-    let stdout = "", stderr = ""
-    proc.stdout.on("data", (d: Buffer) => { stdout += d })
-    proc.stderr.on("data", (d: Buffer) => { stderr += d })
-    proc.on("close", (code) => {
-      if (code !== 0) return reject(new Error(stderr.trim() || `exit ${code}`))
-      resolve(stdout.trim())
-    })
-    proc.on("error", (e) => reject(new Error(`python: ${e.message}`)))
-  })
-}
 
 export async function loadBundleContext(bundle: BundleConfig): Promise<string | null> {
   try {
@@ -58,19 +44,20 @@ if os.path.isdir(agents_dir):
                     in_fm = not in_fm
                     continue
                 if in_fm and line.startswith("description:"):
-                    desc = line.split("description:", 1)[1].strip().strip("'\"")
+                    desc = line.split("description:", 1)[1].strip().strip("'\\"")
                     break
         if desc:
             summaries.append(f"- foundation:{name}: {desc}")
 
 if summaries:
-    parts.append("# Available Agents\n\n" + "\n".join(summaries))
+    parts.append("# Available Agents\\n\\n" + "\\n".join(summaries))
 
-print(json.dumps({"context": "\n\n---\n\n".join(parts) if parts else None}))
+print(json.dumps({"context": "\\n\\n---\\n\\n".join(parts) if parts else None}))
 `, 15000)
     const r = JSON.parse(raw)
     return r.context ?? fallbackContext()
-  } catch {
+  } catch (e) {
+    console.error("[amplifier] loadBundleContext failed:", (e as Error).message)
     return fallbackContext()
   }
 }
