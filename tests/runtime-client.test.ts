@@ -15,6 +15,16 @@ import type {
   OrchestratorContract,
   OrchestratorRouting,
 } from "../src/runtime/contracts.js"
+import type {
+  RuntimeEvent,
+  RuntimeEventType,
+  SessionCreatedEvent,
+  ExecutionStreamingEvent,
+  ApprovalRequestedEvent,
+  OrchestratorRoutingEvent,
+  RuntimeReadyEvent,
+  RuntimeDiagnosticEvent,
+} from "../src/runtime/events.js"
 
 // This file will grow with each runtime-boundary task.
 // For now, a canary test verifies the test runner works.
@@ -75,4 +85,37 @@ test("orchestrator routing types include fast and reasoning", () => {
   }
   expect(fastRouting.type).toBe("fast")
   expect(reasoningRouting.targetModel).toBe("claude-opus-4-5")
+})
+
+test("runtime events module exports required event types", async () => {
+  const module = await import("../src/runtime/events.js")
+  const ready: RuntimeReadyEvent = {
+    type: "runtime.ready",
+    timestamp: Date.now(),
+    payload: { version: "0.1.0" },
+  }
+  const streaming: ExecutionStreamingEvent = {
+    type: "execution.streaming",
+    sessionId: "s1",
+    timestamp: Date.now(),
+    payload: { delta: "hello" },
+  }
+  const approval: ApprovalRequestedEvent = {
+    type: "approval.requested",
+    sessionId: "s1",
+    timestamp: Date.now(),
+    payload: { requestId: "r1", toolName: "bash", args: { command: "rm -rf /" } },
+  }
+  const routing: OrchestratorRoutingEvent = {
+    type: "orchestration.routing",
+    sessionId: "s1",
+    timestamp: Date.now(),
+    payload: { type: "reasoning", reason: "complex design question", targetModel: "claude-opus-4-5" },
+  }
+
+  expect(module).toBeObject()
+  expect(ready.type).toBe("runtime.ready")
+  expect(streaming.payload.delta).toBe("hello")
+  expect(approval.payload.requestId).toBe("r1")
+  expect(routing.payload.type).toBe("reasoning")
 })

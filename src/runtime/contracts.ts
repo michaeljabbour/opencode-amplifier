@@ -158,7 +158,6 @@ export interface RuntimeContract {
   // Session
   createSession(params: SessionCreateParams): Promise<string>
   execute(params: ExecuteParams): Promise<void>
-  // @ts-expect-error Forward type reference for a later Phase 1 task.
   streamEvents(sessionId: string): AsyncIterable<import("./events.js").RuntimeEvent>
   approve(decision: ApprovalDecision): Promise<void>
   cancel(sessionId: string): Promise<void>
