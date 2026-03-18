@@ -32,6 +32,7 @@ import {
   ProcessManagerError,
 } from "../src/runtime/process-manager.js"
 import type { ProcessManagerConfig } from "../src/runtime/process-manager.js"
+import { StubRuntimeClient } from "../src/runtime/client.js"
 
 // This file will grow with each runtime-boundary task.
 // For now, a canary test verifies the test runner works.
@@ -231,4 +232,56 @@ test("StubProcessManager handle.stop() transitions isRunning to false", async ()
   expect(pm.isRunning()).toBe(true)
   await handle.stop()
   expect(pm.isRunning()).toBe(false)
+})
+
+
+test("StubRuntimeClient is disconnected by default", () => {
+  const client = new StubRuntimeClient()
+  expect(client.isConnected()).toBe(false)
+})
+
+test("StubRuntimeClient execute() throws RUNTIME_UNAVAILABLE when disconnected", async () => {
+  const client = new StubRuntimeClient()
+  try {
+    await client.execute({ sessionId: "s1", input: "hello" })
+    throw new Error("should have thrown")
+  } catch (err) {
+    expect(err).toBeInstanceOf(Error)
+    expect((err as Error).message).toContain("RUNTIME_UNAVAILABLE")
+  }
+})
+
+test("StubRuntimeClient connect() marks client as connected", async () => {
+  const client = new StubRuntimeClient()
+  await client.connect()
+  expect(client.isConnected()).toBe(true)
+})
+
+test("StubRuntimeClient listBundles() returns empty array when connected", async () => {
+  const client = new StubRuntimeClient()
+  await client.connect()
+  const bundles = await client.listBundles()
+  expect(Array.isArray(bundles)).toBe(true)
+})
+
+test("StubRuntimeClient createSession() returns a session ID when connected", async () => {
+  const client = new StubRuntimeClient()
+  await client.connect()
+  const id = await client.createSession({ sessionId: "test-session", cwd: "/tmp" })
+  expect(typeof id).toBe("string")
+  expect(id.length).toBeGreaterThan(0)
+})
+
+test("StubRuntimeClient status() returns initializing for a new session", async () => {
+  const client = new StubRuntimeClient()
+  await client.connect()
+  await client.createSession({ sessionId: "sess-1", cwd: "/tmp" })
+  const info = await client.status("sess-1")
+  expect(info.sessionId).toBe("sess-1")
+  expect(info.status).toBe("initializing")
+})
+
+test("StubRuntimeClient orchestrator() returns null in Phase 1", () => {
+  const client = new StubRuntimeClient()
+  expect(client.orchestrator()).toBeNull()
 })
