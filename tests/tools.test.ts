@@ -1,4 +1,4 @@
-import { test, expect } from "bun:test"
+import { test, expect, mock } from "bun:test"
 import {
   resolveBundleOrDefault,
   type BundleConfig,
@@ -16,6 +16,30 @@ import {
   PROVIDER_ENV,
   resolveProviderEnvKey,
 } from "../src/providers/mapping.js"
+import { AmplifierSession } from "../src/kernel/session.js"
+import type { RuntimeContract } from "../src/runtime/contracts.js"
+import { StubRuntimeClient } from "../src/runtime/client.js"
+
+mock.module("@opencode-ai/plugin", () => ({
+  tool: Object.assign(
+    (definition: Record<string, unknown>) => definition,
+    {
+      schema: {
+        enum: (_values: string[]) => ({
+          describe() { return this },
+        }),
+        string: () => ({
+          optional() { return this },
+          describe() { return this },
+        }),
+      },
+    },
+  ),
+}))
+
+async function loadBuildStatusTools() {
+  return (await import("../src/tools/status.js")).buildStatusTools
+}
 
 test("tools test infrastructure is working", () => {
   expect(true).toBe(true)
@@ -126,4 +150,38 @@ test("resolveProviderEnvKey resolves env var reference in config", () => {
 test("resolveProviderEnvKey returns undefined for missing env var reference", () => {
   const key = resolveProviderEnvKey({ api_key: "${DEFINITELY_NOT_SET_XYZ}" })
   expect(key).toBeUndefined()
+})
+
+
+test("buildStatusTools returns amplifier_status, amplifier_capability, and amplifier_emit", async () => {
+  const session = new AmplifierSession()
+  const client: RuntimeContract = new StubRuntimeClient()
+  const buildStatusTools = await loadBuildStatusTools()
+  const tools = buildStatusTools(session, client)
+  expect(typeof tools.amplifier_status).toBe("object")
+  expect(typeof tools.amplifier_capability).toBe("object")
+  expect(typeof tools.amplifier_emit).toBe("object")
+})
+
+test("amplifier_status execute() returns JSON with sessionId", async () => {
+  const session = new AmplifierSession("test-session-id")
+  session.setInitialized()
+  const client: RuntimeContract = new StubRuntimeClient()
+  const buildStatusTools = await loadBuildStatusTools()
+  const tools = buildStatusTools(session, client)
+  const result = await tools.amplifier_status.execute({}, { directory: "/tmp", sessionID: "oc-1" } as any)
+  const parsed = JSON.parse(result as string)
+  expect(parsed.sessionId).toBe("test-session-id")
+  expect(parsed.isInitialized).toBe(true)
+})
+
+test("amplifier_status includes runtimeConnected field", async () => {
+  const session = new AmplifierSession()
+  const client: RuntimeContract = new StubRuntimeClient()
+  const buildStatusTools = await loadBuildStatusTools()
+  const tools = buildStatusTools(session, client)
+  const result = await tools.amplifier_status.execute({}, { directory: "/tmp", sessionID: "oc-1" } as any)
+  const parsed = JSON.parse(result as string)
+  expect(typeof parsed.runtimeConnected).toBe("boolean")
+  expect(parsed.runtimeConnected).toBe(false) // StubRuntimeClient starts disconnected
 })
