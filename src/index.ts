@@ -11,6 +11,9 @@ import { tool } from "@opencode-ai/plugin"
 import { randomUUID } from "crypto"
 import { exec } from "child_process"
 import { spawn } from "child_process"
+import { readFileSync, readdirSync, existsSync } from "fs"
+import { join, basename } from "path"
+import { homedir } from "os"
 
 // ─── Kernel Primitives ──────────────────────────────────────────────────────
 
@@ -224,7 +227,71 @@ print(json.dumps({"context": "\\n\\n---\\n\\n".join(parts) if parts else None}))
 }
 
 function fallbackContext(): string {
-  return `You have amplifier tools available (amplifier_status, amplifier_capability, amplifier_emit, amplifier_bundle_resolve, amplifier_init, amplifier_doctor, amplifier_bundle_list, amplifier_bundle_show, amplifier_bundle_use, amplifier_agents_list, amplifier_agents_show, amplifier_provider_list, amplifier_provider_use, amplifier_settings_get, amplifier_settings_set, amplifier_mode, amplifier_cli). Use these tools to answer questions about amplifier capabilities, agents, and bundles.`
+  return `You have amplifier tools available. Use them to answer questions about amplifier capabilities, agents, bundles, and modes. When the user types a slash command like /brainstorm, /plan, /debug, or /modes, use the amplifier_mode or amplifier_modes_list tool to handle it.`
+}
+
+// ─── Mode Discovery (from bundle cache) ─────────────────────────────────────
+
+interface ModeDefinition {
+  name: string
+  description: string
+  shortcut: string
+  source: string
+  filePath: string
+}
+
+function discoverModes(): ModeDefinition[] {
+  const cacheDir = join(homedir(), ".amplifier", "cache")
+  if (!existsSync(cacheDir)) return []
+  const modes: ModeDefinition[] = []
+  const seen = new Set<string>()
+  try {
+    for (const entry of readdirSync(cacheDir)) {
+      const modesDir = join(cacheDir, entry, "modes")
+      if (!existsSync(modesDir)) continue
+      const source = entry.replace(/-[a-f0-9]{16}$/, "")
+      for (const file of readdirSync(modesDir)) {
+        if (!file.endsWith(".md")) continue
+        const name = basename(file, ".md")
+        if (seen.has(name)) continue
+        seen.add(name)
+        const content = readFileSync(join(modesDir, file), "utf-8")
+        const fm = parseFrontmatter(content)
+        modes.push({
+          name: fm.name || name,
+          description: fm.description || "",
+          shortcut: fm.shortcut || name,
+          source,
+          filePath: join(modesDir, file),
+        })
+      }
+    }
+  } catch {}
+  return modes
+}
+
+function parseFrontmatter(content: string): Record<string, string> {
+  const result: Record<string, string> = {}
+  const match = content.match(/^---\n([\s\S]*?)\n---/)
+  if (!match) return result
+  for (const line of match[1].split("\n")) {
+    const trimmed = line.trim()
+    if (!trimmed || trimmed === "mode:") continue
+    const colon = trimmed.indexOf(":")
+    if (colon < 0) continue
+    const key = trimmed.slice(0, colon).trim()
+    const val = trimmed.slice(colon + 1).trim().replace(/^['"]|['"]$/g, "")
+    if (key && val) result[key] = val
+  }
+  return result
+}
+
+function loadModeContent(filePath: string): string | null {
+  try {
+    const content = readFileSync(filePath, "utf-8")
+    // Strip frontmatter, return just the markdown body
+    return content.replace(/^---\n[\s\S]*?\n---\n*/, "").trim() || null
+  } catch { return null }
 }
 
 // ─── Provider Mapping ───────────────────────────────────────────────────────
@@ -271,9 +338,13 @@ const AmplifierPlugin: Plugin = async (input: PluginInput) => {
     if (key && !process.env[envVar]) process.env[envVar] = key
   }
 
-  // Track active state on kernel
+  // Discover modes from bundle cache and track active state
+  const availableModes = discoverModes()
+  let activeModeContext: string | null = null
+
   coord.registerCapability("active.bundle", bundle.name)
   coord.registerCapability("active.provider", bundleProviders[0]?.module ?? "none")
+  coord.registerCapability("active.mode", "none")
 
   // Helpers
   async function emit(event: string, data: Record<string, unknown>): Promise<HookResult | null> {
@@ -308,6 +379,12 @@ const AmplifierPlugin: Plugin = async (input: PluginInput) => {
     "experimental.chat.system.transform": async (inp, out) => {
       // Inject context composed from the resolved amplifier bundle
       if (bundleContext) out.system.push(bundleContext)
+
+      // Inject active mode context
+      if (activeModeContext) {
+        const modeName = coord.getCapability("active.mode") ?? "unknown"
+        out.system.push(`<system-reminder source="mode-${modeName}">\n${activeModeContext}\n</system-reminder>`)
+      }
 
       // Allow kernel hooks to inject additional context
       const r = await emit("provider:system", { session_id: inp.sessionID ?? "", model: inp.model.id, provider: inp.model.providerID })
@@ -344,7 +421,9 @@ const AmplifierPlugin: Plugin = async (input: PluginInput) => {
           sessionId: session.sessionId, parentId: session.parentId, status: session.status,
           isInitialized: session.isInitialized,
           activeBundle: coord.getCapability("active.bundle"),
+          activeMode: coord.getCapability("active.mode"),
           activeProvider: coord.getCapability("active.provider"),
+          availableModes: availableModes.map((m) => `/${m.shortcut}`).join(", ") || "none",
           hooks: coord.hooks.listHandlers(),
           capabilities: coord.toDict(), bundleProviders: bundleProviders.map((p) => ({
             module: p.module, opencode_provider: PROVIDER_MAP[p.module] ?? null,
@@ -501,6 +580,61 @@ const AmplifierPlugin: Plugin = async (input: PluginInput) => {
       },
       async execute(args, ctx) {
         return runCli(`settings set ${args.key} ${args.value}`, ctx.directory)
+      },
+    }),
+
+    amplifier_modes_list: tool({
+      description: "List available modes. Use when the user asks 'what modes are available', '/modes', 'list modes', or wants to know what modes they can use. Modes are behavioral overlays like brainstorm, plan, debug, etc.",
+      args: {},
+      async execute() {
+        if (availableModes.length === 0) return "No modes found. Install a bundle with modes (e.g. 'superpowers') to enable modes."
+        const currentMode = coord.getCapability("active.mode")
+        const grouped = new Map<string, ModeDefinition[]>()
+        for (const m of availableModes) {
+          const list = grouped.get(m.source) ?? []
+          list.push(m)
+          grouped.set(m.source, list)
+        }
+        const lines = ["Available modes:"]
+        for (const [source, modes] of grouped) {
+          lines.push(`\n  ${source}:`)
+          for (const m of modes) {
+            const indicator = m.name === currentMode ? " *" : ""
+            lines.push(`    /${m.shortcut}${indicator} — ${m.description || m.name}`)
+          }
+        }
+        if (currentMode && currentMode !== "none") lines.push(`\nActive: ${currentMode}`)
+        lines.push("\nUse /mode <name> to activate, /mode off to clear.")
+        return lines.join("\n")
+      },
+    }),
+
+    amplifier_mode: tool({
+      description: "Activate or deactivate a mode. Use when the user says '/brainstorm', '/plan', '/debug', '/mode <name>', '/mode off', or any slash command matching a mode name. Modes are behavioral overlays that change how you operate (e.g. brainstorm mode focuses on design refinement, plan mode focuses on implementation planning).",
+      args: {
+        name: tool.schema.string().describe("Mode name to activate (e.g. 'brainstorm', 'plan', 'debug', 'write-plan', 'execute-plan', 'verify', 'finish', 'explore', 'careful'), or 'off' to clear the active mode"),
+      },
+      async execute(args) {
+        const name = args.name.trim().toLowerCase().replace(/^\//, "")
+
+        if (name === "off" || name === "clear" || name === "none") {
+          activeModeContext = null
+          coord.registerCapability("active.mode", "none")
+          return "Mode cleared."
+        }
+
+        const mode = availableModes.find((m) => m.name === name || m.shortcut === name)
+        if (!mode) {
+          const names = availableModes.map((m) => m.shortcut).join(", ")
+          return `Unknown mode: ${name}. Available: ${names || "none (install a bundle with modes)"}`
+        }
+
+        const content = loadModeContent(mode.filePath)
+        if (!content) return `error: could not load mode content for ${mode.name}`
+
+        activeModeContext = content
+        coord.registerCapability("active.mode", mode.name)
+        return `Mode: ${mode.name}` + (mode.description ? ` — ${mode.description}` : "")
       },
     }),
 
