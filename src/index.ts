@@ -416,7 +416,7 @@ const AmplifierPlugin: Plugin = async (input: PluginInput) => {
     }),
 
     amplifier_bundle_list: tool({
-      description: "List all available amplifier bundles with their descriptions and status.",
+      description: "List all available amplifier bundles. Use when the user asks 'what bundles are available', 'what can I use', 'list bundles', or wants to know their options.",
       args: {},
       async execute(_args, ctx) {
         return runCli("bundle list", ctx.directory)
@@ -424,9 +424,9 @@ const AmplifierPlugin: Plugin = async (input: PluginInput) => {
     }),
 
     amplifier_bundle_show: tool({
-      description: "Show details of an amplifier bundle including its mount plan, tools, hooks, agents, and context.",
+      description: "Show details of an amplifier bundle including its mount plan, tools, hooks, agents, and context. Use when the user asks 'what does <name> do', 'tell me about <name> bundle', or 'what's in <name>'.",
       args: {
-        name: tool.schema.string().describe("Bundle name (e.g. 'foundation', 'coding', 'amplifier-dev')"),
+        name: tool.schema.string().describe("Bundle name (e.g. 'foundation', 'superpowers', 'amplifier-dev', 'skills')"),
       },
       async execute(args, ctx) {
         return runCli(`bundle show ${args.name}`, ctx.directory)
@@ -434,9 +434,9 @@ const AmplifierPlugin: Plugin = async (input: PluginInput) => {
     }),
 
     amplifier_bundle_use: tool({
-      description: "Switch the active amplifier bundle. Changes which tools, agents, and context are available.",
+      description: "Switch the active amplifier bundle. Use this when the user says 'use <name>', 'switch to <name>', or references a bundle by name (e.g. 'use superpowers', 'switch to foundation', 'use amplifier-dev'). Bundles change which tools, agents, context, and behaviors are available.",
       args: {
-        name: tool.schema.string().describe("Bundle name to activate"),
+        name: tool.schema.string().describe("Bundle name to activate (e.g. 'superpowers', 'foundation', 'amplifier-dev', 'skills', 'recipes')"),
       },
       async execute(args, ctx) {
         const result = await runCli(`bundle use ${args.name}`, ctx.directory)
