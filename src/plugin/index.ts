@@ -122,6 +122,35 @@ export function createAmplifierPlugin(): Plugin {
       getActiveModeContext,
     })
 
-    return { tool: tools, ...hooks }
+    // 9. Build command hook for slash commands (/modes, /mode <name>, /<shortcut>)
+    const modeShortcuts = new Set(availableModes.map((m) => m.shortcut))
+    const modeNames = new Set(availableModes.map((m) => m.name))
+
+    return {
+      tool: tools,
+      ...hooks,
+      "command.execute.before": async (inp, out) => {
+        const cmd = inp.command.toLowerCase()
+        const args = inp.arguments?.trim() || ""
+
+        let result: string | null = null
+
+        if (cmd === "modes") {
+          result = await (tools.amplifier_modes_list as any).execute({})
+        } else if (cmd === "mode") {
+          if (!args) {
+            result = await (tools.amplifier_modes_list as any).execute({})
+          } else {
+            result = await (tools.amplifier_mode as any).execute({ name: args })
+          }
+        } else if (modeShortcuts.has(cmd) || modeNames.has(cmd)) {
+          result = await (tools.amplifier_mode as any).execute({ name: cmd })
+        }
+
+        if (result) {
+          (out as any).parts.push({ type: "text", text: result })
+        }
+      },
+    }
   }
 }
