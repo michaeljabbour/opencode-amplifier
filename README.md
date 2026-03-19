@@ -4,21 +4,12 @@
 
 ## Install
 
-### 1. Install Amplifier
-
 ```bash
-uv tool install amplifier
+uv tool install amplifier        # 1. install amplifier
+npm install -g opencode          # 2. install opencode
 ```
 
-### 2. Install OpenCode
-
-```bash
-npm install -g opencode
-```
-
-### 3. Install the plugin
-
-Add `opencode-amplifier` to your project's `opencode.json`:
+Then add the plugin to your project's `opencode.json`:
 
 ```json
 {
@@ -26,12 +17,10 @@ Add `opencode-amplifier` to your project's `opencode.json`:
 }
 ```
 
-OpenCode auto-installs npm plugin packages at startup.
-
-### 4. Run
+OpenCode auto-installs npm plugins at startup — no separate `npm install` needed.
 
 ```bash
-opencode
+opencode                         # 3. run it
 ```
 
 The plugin registers 19 tools and 4 hooks automatically. Try:
