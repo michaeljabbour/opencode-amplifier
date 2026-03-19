@@ -1,7 +1,36 @@
-import { test, expect } from "bun:test"
+import { test, expect, mock } from "bun:test"
 import { AmplifierSession, Coordinator, HookRegistry, CancellationToken } from "../src/kernel/session.js"
 import { buildHooks } from "../src/plugin/hooks.js"
 import { StubRuntimeClient } from "../src/runtime/client.js"
+
+// ─── Mock @opencode-ai/plugin for tool builders that import `tool` as a value ──
+// (Same strategy as tests/tools.test.ts — mock.module must run before any
+//  dynamic import of modules that depend on this peer dependency.)
+mock.module("@opencode-ai/plugin", () => ({
+  tool: Object.assign(
+    (definition: Record<string, unknown>) => definition,
+    {
+      schema: {
+        enum: (_values: string[]) => ({
+          describe() { return this },
+        }),
+        boolean: () => ({
+          optional() { return this },
+          describe() { return this },
+        }),
+        string: () => ({
+          optional() { return this },
+          describe() { return this },
+        }),
+      },
+    },
+  ),
+}))
+
+// ─── Dynamic loader for plugin entry point ─────────────────────────────────────
+async function loadCreateAmplifierPlugin() {
+  return (await import("../src/plugin/index.js")).createAmplifierPlugin
+}
 
 test("plugin-hooks test infrastructure is working", () => {
   expect(true).toBe(true)
@@ -148,4 +177,65 @@ test("shell.env hook injects provider API key into env when not already set", as
   await hooks["shell.env"]!({} as any, output)
   expect(output.env["ANTHROPIC_API_KEY"]).toBe("test-key-abc")
   delete process.env["ANTHROPIC_API_KEY"]
+})
+
+// ─── Task 14: Plugin entry point tests ────────────────────────────────────────
+
+const fakeInput = {
+  project: { id: "proj-test", name: "Test Project", path: "/tmp/test" },
+  directory: "/tmp/test",
+  worktree: "/tmp/test",
+}
+
+test("createAmplifierPlugin returns a plugin function", async () => {
+  const createAmplifierPlugin = await loadCreateAmplifierPlugin()
+  const plugin = createAmplifierPlugin()
+  expect(typeof plugin).toBe("function")
+})
+
+test("plugin function returns hooks and tools when invoked", async () => {
+  const createAmplifierPlugin = await loadCreateAmplifierPlugin()
+  const plugin = createAmplifierPlugin()
+  const result = await plugin(fakeInput as any)
+  // Must have tool definitions
+  expect(typeof result.tool).toBe("object")
+  expect(result.tool).not.toBeNull()
+  // Must have hook functions
+  expect(typeof result["chat.params"]).toBe("function")
+  expect(typeof result["experimental.chat.system.transform"]).toBe("function")
+  expect(typeof result["tool.execute.before"]).toBe("function")
+  expect(typeof result["tool.execute.after"]).toBe("function")
+  expect(typeof result["shell.env"]).toBe("function")
+  expect(typeof result.event).toBe("function")
+})
+
+test("plugin tool map includes all expected tools", async () => {
+  const createAmplifierPlugin = await loadCreateAmplifierPlugin()
+  const plugin = createAmplifierPlugin()
+  const result = await plugin(fakeInput as any)
+  const toolNames = Object.keys(result.tool ?? {})
+  const required = [
+    "amplifier_status",
+    "amplifier_capability",
+    "amplifier_emit",
+    "amplifier_bundle_resolve",
+    "amplifier_bundle_list",
+    "amplifier_bundle_show",
+    "amplifier_bundle_use",
+    "amplifier_bundle_current",
+    "amplifier_agents_list",
+    "amplifier_agents_show",
+    "amplifier_provider_list",
+    "amplifier_provider_use",
+    "amplifier_modes_list",
+    "amplifier_mode",
+    "amplifier_settings_get",
+    "amplifier_settings_set",
+    "amplifier_init",
+    "amplifier_doctor",
+    "amplifier_cli",
+  ]
+  for (const name of required) {
+    expect(toolNames).toContain(name)
+  }
 })
