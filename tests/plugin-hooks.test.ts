@@ -32,6 +32,10 @@ async function loadCreateAmplifierPlugin() {
   return (await import("../src/plugin/index.js")).createAmplifierPlugin
 }
 
+async function loadAmplifierPlugin() {
+  return (await import("../src/index.js")).default
+}
+
 test("plugin-hooks test infrastructure is working", () => {
   expect(true).toBe(true)
 })
@@ -238,4 +242,25 @@ test("plugin tool map includes all expected tools", async () => {
   for (const name of required) {
     expect(toolNames).toContain(name)
   }
+})
+
+
+// ─── Task 15: Thin entrypoint tests ──────────────────────────────────────────
+
+test("default export from src/index.ts is a plugin function", async () => {
+  const AmplifierPlugin = await loadAmplifierPlugin()
+  expect(typeof AmplifierPlugin).toBe("function")
+})
+
+test("default export is the same function as createAmplifierPlugin() produces", async () => {
+  const AmplifierPlugin = await loadAmplifierPlugin()
+  const fakeInput2 = {
+    project: { id: "proj-idx", name: "Index Test", path: "/tmp/idx" } as any,
+    directory: "/tmp/idx",
+    worktree: "/tmp/idx",
+  }
+  // Should not throw
+  const result = await AmplifierPlugin(fakeInput2 as any)
+  expect(typeof result.tool).toBe("object")
+  expect(typeof result["chat.params"]).toBe("function")
 })
