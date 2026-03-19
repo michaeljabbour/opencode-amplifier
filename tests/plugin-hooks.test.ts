@@ -252,7 +252,7 @@ test("default export from src/index.ts is a plugin function", async () => {
   expect(typeof AmplifierPlugin).toBe("function")
 })
 
-test("default export is the same function as createAmplifierPlugin() produces", async () => {
+test("default export produces a plugin with tools and hooks when invoked", async () => {
   const AmplifierPlugin = await loadAmplifierPlugin()
   const fakeInput2 = {
     project: { id: "proj-idx", name: "Index Test", path: "/tmp/idx" } as any,
