@@ -123,7 +123,7 @@ test("chat.params hook does not throw when runtime is disconnected (Phase 1 comp
   const output = { temperature: 0.7 as number | undefined }
   // Should not throw in Phase 1 — fail-closed enforcement comes in Phase 2
   // Note: use async lambda form for Bun compatibility (resolves.not.toThrow fails for void)
-  await expect(async () => { await hooks["chat.params"]!(stubInput as any, output) }).not.toThrow()
+  await expect(async () => { await hooks["chat.params"]!(stubInput as any, output as any) }).not.toThrow()
 })
 
 test("experimental.chat.system.transform injects bundleContext when present", async () => {
