@@ -5,22 +5,10 @@
 ## Install
 
 ```bash
-uv tool install amplifier        # 1. install amplifier
-npm install -g opencode          # 2. install opencode
-```
-
-Then add the plugin to your project's `opencode.json`:
-
-```json
-{
-  "plugin": ["opencode-amplifier"]
-}
-```
-
-OpenCode auto-installs npm plugins at startup — no separate `npm install` needed.
-
-```bash
-opencode                         # 3. run it
+uv tool install amplifier                                          # 1. install amplifier
+npm install -g opencode                                            # 2. install opencode
+echo '{ "plugin": ["opencode-amplifier"] }' > opencode.json       # 3. add the plugin
+opencode                                                           # 4. run it
 ```
 
 The plugin registers 19 tools and 4 hooks automatically. Try:
