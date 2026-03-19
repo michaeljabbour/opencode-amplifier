@@ -16,9 +16,9 @@ uv tool install amplifier
 npm install -g opencode
 ```
 
-### 3. Add the plugin to your project
+### 3. Install the plugin
 
-Create or edit `opencode.json` in your project root:
+Add `opencode-amplifier` to your project's `opencode.json`:
 
 ```json
 {
@@ -26,7 +26,7 @@ Create or edit `opencode.json` in your project root:
 }
 ```
 
-OpenCode resolves the npm package automatically — no `npm install` needed.
+OpenCode auto-installs npm plugin packages at startup.
 
 ### 4. Run
 
