@@ -50,8 +50,7 @@ asyncio.run(main())
 
 export async function resolveBundleOrDefault(name: string, settings?: Record<string, unknown>): Promise<BundleConfig> {
   try { return await resolveBundle(name, settings) }
-  catch (e) {
-    console.error(`[amplifier] bundle resolution failed for "${name}":`, (e as Error).message)
+  catch {
     return { name, mount_plan: { tools: [], providers: [], hooks: [], context: [] } }
   }
 }

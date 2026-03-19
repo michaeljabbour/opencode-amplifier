@@ -69,8 +69,7 @@ export function loadModeContent(filePath: string): string | null {
   try {
     const content = readFileSync(filePath, "utf-8")
     return content.replace(/^---\n[\s\S]*?\n---\n*/, "").trim() || null
-  } catch (e) {
-    console.error("[amplifier] loadModeContent failed:", (e as Error).message)
+  } catch {
     return null
   }
 }

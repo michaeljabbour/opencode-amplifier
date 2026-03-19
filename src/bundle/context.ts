@@ -56,8 +56,7 @@ print(json.dumps({"context": "\\n\\n---\\n\\n".join(parts) if parts else None}))
 `, 15000)
     const r = JSON.parse(raw)
     return r.context ?? fallbackContext()
-  } catch (e) {
-    console.error("[amplifier] loadBundleContext failed:", (e as Error).message)
+  } catch {
     return fallbackContext()
   }
 }

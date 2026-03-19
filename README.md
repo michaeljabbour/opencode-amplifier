@@ -9,27 +9,44 @@
 | **opencode-amplifier** (this plugin) | Bootstrap/connect runtime, translate OpenCode UX into runtime calls, render status and diagnostics |
 | **Native Amplifier runtime** | Resolve bundles/profiles, create sessions, execute prompts, manage tools/hooks/approvals/orchestration |
 
-## Install
+## Quick start
+
+### 1. Clone and install
 
 ```bash
-npm install opencode-amplifier
+git clone https://github.com/anthropics/opencode-amplifier.git
+cd opencode-amplifier
+bun install
 ```
 
-Add to your `opencode.json` or `opencode.jsonc`:
+### 2. Run tests
+
+```bash
+bun test          # 80 tests, should all pass with clean output
+bun run typecheck  # should exit silently (no errors)
+```
+
+### 3. Use with OpenCode
+
+Add the plugin to your `opencode.json` or `opencode.jsonc`:
 
 ```jsonc
 {
-  "plugin": ["opencode-amplifier"]
+  "plugin": ["file:///absolute/path/to/opencode-amplifier"]
 }
 ```
 
-### Alternative: local development
+Then start OpenCode normally. The plugin registers 19 tools and 4 hooks automatically.
 
-```jsonc
-{
-  "plugin": ["file:///path/to/opencode-amplifier"]
-}
+### 4. (Optional) Full Amplifier integration
+
+For bundle resolution and context loading, install the Amplifier Python runtime:
+
+```bash
+uv tool install amplifier
 ```
+
+Without it the plugin still works — it falls back to built-in defaults.
 
 ## Available tools
 
@@ -74,17 +91,16 @@ OpenCode UI surfaces
 ## Development
 
 ```bash
-git clone https://github.com/michaeljabbour/opencode-amplifier
-cd opencode-amplifier
-bun install
-bun test
+bun install        # install dependencies
+bun test           # 80 tests, all should pass with clean output
+bun run typecheck  # should exit silently (no errors)
 ```
 
 ## Requirements
 
+- [Bun](https://bun.sh) (for development and testing)
 - [OpenCode](https://opencode.ai) (any version with plugin support)
-- Optional: `amplifier-foundation` Python package (bundle resolution)
-- Optional: native Amplifier runtime binary (Phase 2+)
+- Optional: [Amplifier](https://github.com/microsoft/amplifier) Python runtime (`uv tool install amplifier`) for full bundle resolution and context loading
 
 ## License
 
