@@ -1,106 +1,89 @@
 # opencode-amplifier
 
-[OpenCode](https://opencode.ai) plugin that connects to a native local Amplifier runtime. Provides Amplifier-mode execution, bundle/profile management, mode switching, provider control, and fail-closed diagnostics from within any OpenCode session.
+[OpenCode](https://opencode.ai) plugin that brings [Amplifier](https://github.com/microsoft/amplifier) into any OpenCode session — bundles, modes, agents, provider switching, and diagnostics.
 
-## What it does
+## Install
 
-| Layer | Responsibility |
-|-------|---------------|
-| **opencode-amplifier** (this plugin) | Bootstrap/connect runtime, translate OpenCode UX into runtime calls, render status and diagnostics |
-| **Native Amplifier runtime** | Resolve bundles/profiles, create sessions, execute prompts, manage tools/hooks/approvals/orchestration |
-
-## Quick start
-
-### 1. Clone and install
-
-```bash
-git clone https://github.com/anthropics/opencode-amplifier.git
-cd opencode-amplifier
-bun install
-```
-
-### 2. Run tests
-
-```bash
-bun test          # 80 tests, should all pass with clean output
-bun run typecheck  # should exit silently (no errors)
-```
-
-### 3. Use with OpenCode
-
-Add the plugin to your `opencode.json` or `opencode.jsonc`:
-
-```jsonc
-{
-  "plugin": ["file:///absolute/path/to/opencode-amplifier"]
-}
-```
-
-Then start OpenCode normally. The plugin registers 19 tools and 4 hooks automatically.
-
-### 4. (Optional) Full Amplifier integration
-
-For bundle resolution and context loading, install the Amplifier Python runtime:
+### 1. Install Amplifier
 
 ```bash
 uv tool install amplifier
 ```
 
-Without it the plugin still works — it falls back to built-in defaults.
+### 2. Install OpenCode
 
-## Available tools
+```bash
+npm install -g opencode
+```
 
-| Tool | Description |
-|------|-------------|
-| `amplifier_status` | Session state, runtime connection, active bundle/mode/provider |
-| `amplifier_capability` | Get, set, or list coordinator capabilities |
-| `amplifier_emit` | Emit a kernel hook event |
-| `amplifier_bundle_resolve` | Resolve a bundle and show its mount plan |
-| `amplifier_bundle_list` | List available bundles |
-| `amplifier_bundle_show` | Show bundle details |
-| `amplifier_bundle_use` | Switch active bundle |
-| `amplifier_bundle_current` | Show currently active bundle |
-| `amplifier_agents_list` | List available agents |
-| `amplifier_agents_show` | Show agent details |
-| `amplifier_provider_list` | List configured providers |
-| `amplifier_provider_use` | Switch active provider |
-| `amplifier_modes_list` | List available modes |
-| `amplifier_mode` | Activate or deactivate a mode |
-| `amplifier_settings_get` | Show current settings |
-| `amplifier_settings_set` | Update a setting |
-| `amplifier_init` | Initialize Amplifier in the current project |
-| `amplifier_doctor` | Diagnose configuration and runtime issues |
-| `amplifier_cli` | Escape hatch: run any CLI command (diagnostics only) |
+### 3. Add the plugin
 
-## Architecture
+```bash
+npm install opencode-amplifier
+```
+
+Add to your project's `opencode.json`:
+
+```json
+{
+  "plugin": ["opencode-amplifier"]
+}
+```
+
+### 4. Run
+
+```bash
+opencode
+```
+
+The plugin registers 19 tools and 4 hooks automatically. Try:
 
 ```
-OpenCode UI surfaces
-  -> opencode-amplifier plugin  (src/plugin/index.ts)
-    -> runtime client            (src/runtime/client.ts)
-      -> transport               (src/runtime/transport.ts)
-        -> native Amplifier runtime
-    -> bundle resolution         (src/bundle/)
-    -> mode discovery            (src/modes/)
-    -> provider mapping          (src/providers/)
-    -> hooks                     (src/plugin/hooks.ts)
-    -> tools                     (src/tools/)
-    -> [transitional] kernel     (src/kernel/session.ts)
+modes                        # list available modes
+bundle list                  # list available bundles
+use foundation               # switch active bundle
+bundle add git+https://...   # install a new bundle
+brainstorm                   # activate brainstorm mode
+mode off                     # clear active mode
 ```
+
+## What you get
+
+| Category | Tools |
+|----------|-------|
+| **Status** | `amplifier_status`, `amplifier_capability`, `amplifier_emit` |
+| **Bundles** | `amplifier_bundle_list`, `amplifier_bundle_show`, `amplifier_bundle_resolve`, `amplifier_bundle_use`, `amplifier_bundle_current` |
+| **Agents** | `amplifier_agents_list`, `amplifier_agents_show` |
+| **Providers** | `amplifier_provider_list`, `amplifier_provider_use` |
+| **Modes** | `amplifier_modes_list`, `amplifier_mode` |
+| **Settings** | `amplifier_settings_get`, `amplifier_settings_set` |
+| **Diagnostics** | `amplifier_init`, `amplifier_doctor`, `amplifier_cli` |
 
 ## Development
 
 ```bash
-bun install        # install dependencies
-bun test           # 80 tests, all should pass with clean output
-bun run typecheck  # should exit silently (no errors)
+git clone https://github.com/michaeljabbour/opencode-amplifier.git
+cd opencode-amplifier
+bun install
+bun test            # 80 tests, clean output
+bun run typecheck   # should exit silently
+```
+
+### Local plugin development
+
+To test local changes without publishing:
+
+```json
+{
+  "plugin": ["file:///absolute/path/to/opencode-amplifier"]
+}
 ```
 
 ## Requirements
 
-- [Bun](https://bun.sh) (for development and testing)
-- [OpenCode](https://opencode.ai) (any version with plugin support)
-- Optional: [Amplifier](https://github.com/microsoft/amplifier) Python runtime (`uv tool install amplifier`) for full bundle resolution and context loading
+- [Amplifier](https://github.com/microsoft/amplifier) (`uv tool install amplifier`)
+- [OpenCode](https://opencode.ai) (`npm install -g opencode`)
+- [Bun](https://bun.sh) (for development only)
 
 ## License
 
