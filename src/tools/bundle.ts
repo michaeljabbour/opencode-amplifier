@@ -7,9 +7,8 @@
 
 import { tool } from "@opencode-ai/plugin"
 import type { Coordinator } from "../kernel/session.js"
+import type { RunCli } from "./index.js"
 import { resolveBundle } from "../bundle/resolve.js"
-
-type RunCli = (command: string, cwd: string) => Promise<string>
 
 export function buildBundleTools(coord: Coordinator, runCli: RunCli) {
   return {

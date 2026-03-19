@@ -6,8 +6,7 @@
  */
 
 import { tool } from "@opencode-ai/plugin"
-
-type RunCli = (command: string, cwd: string) => Promise<string>
+import type { RunCli } from "./index.js"
 
 export function buildDiagnosticsTools(runCli: RunCli) {
   return {

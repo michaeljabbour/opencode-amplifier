@@ -6,6 +6,10 @@
  * Later phases will replace CLI passthrough and cache reads with runtime APIs.
  */
 
+// Shared type for injected CLI runner used by bundle, provider, settings, and diagnostics tools.
+// Phase 3: this type disappears when CLI passthrough is replaced with runtime API calls.
+export type RunCli = (command: string, cwd: string) => Promise<string>
+
 export { buildStatusTools } from "./status.js"
 export { buildBundleTools } from "./bundle.js"
 export { buildProviderTools } from "./provider.js"

@@ -7,8 +7,7 @@
 
 import { tool } from "@opencode-ai/plugin"
 import type { Coordinator } from "../kernel/session.js"
-
-type RunCli = (command: string, cwd: string) => Promise<string>
+import type { RunCli } from "./index.js"
 
 export function buildProviderTools(coord: Coordinator, runCli: RunCli) {
   return {

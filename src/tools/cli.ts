@@ -15,8 +15,8 @@ function runCli(command: string, cwd: string): Promise<string> {
   })
 }
 
-export function buildCliTool(_runCli?: (cmd: string, cwd: string) => Promise<string>) {
-  const executeCli = _runCli ?? runCli
+export function buildCliTool(runCliOverride?: (cmd: string, cwd: string) => Promise<string>) {
+  const executeCli = runCliOverride ?? runCli
 
   return {
     amplifier_cli: tool({

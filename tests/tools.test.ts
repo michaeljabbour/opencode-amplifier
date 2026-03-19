@@ -342,3 +342,44 @@ test("amplifier_agents_list and amplifier_agents_show are part of buildBundleToo
   expect(typeof tools.amplifier_agents_list).toBe("object")
   expect(typeof tools.amplifier_agents_show).toBe("object")
 })
+
+test("amplifier_bundle_use registers active.bundle capability on success", async () => {
+  const session = new AmplifierSession()
+  const buildBundleTools = await loadBuildBundleTools()
+  const tools = buildBundleTools(session.coordinator, makeRunCli("switched to superpowers"))
+  await tools.amplifier_bundle_use.execute({ name: "superpowers" }, { directory: "/tmp" } as any)
+  expect(session.coordinator.getCapability("active.bundle")).toBe("superpowers")
+})
+
+test("amplifier_provider_use registers active.provider capability on success", async () => {
+  const session = new AmplifierSession()
+  const buildProviderTools = await loadBuildProviderTools()
+  const tools = buildProviderTools(session.coordinator, makeRunCli("switched to anthropic"))
+  await tools.amplifier_provider_use.execute({ name: "anthropic" }, { directory: "/tmp" } as any)
+  expect(session.coordinator.getCapability("active.provider")).toBe("anthropic")
+})
+
+test("amplifier_mode activates, deactivates, and handles unknown mode", async () => {
+  const session = new AmplifierSession()
+  const modes: ModeDefinition[] = [{
+    name: "plan", description: "Planning", shortcut: "plan", source: "test", filePath: "/tmp/plan.md",
+  }]
+  const buildModeTools = await loadBuildModeTools()
+  const { tools, getActiveModeContext } = buildModeTools(
+    session.coordinator,
+    modes,
+    () => "## Plan mode content",
+  )
+
+  const result = await tools.amplifier_mode.execute({ name: "plan" }, {} as any)
+  expect(result as string).toContain("plan")
+  expect(session.coordinator.getCapability("active.mode")).toBe("plan")
+  expect(getActiveModeContext()).toBe("## Plan mode content")
+
+  await tools.amplifier_mode.execute({ name: "off" }, {} as any)
+  expect(session.coordinator.getCapability("active.mode")).toBe("none")
+  expect(getActiveModeContext()).toBeNull()
+
+  const bad = await tools.amplifier_mode.execute({ name: "nonexistent" }, {} as any)
+  expect(bad as string).toContain("Unknown mode")
+})
