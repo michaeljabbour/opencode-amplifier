@@ -71,9 +71,9 @@ export function createAmplifierPlugin(): Plugin {
     // 2. Create runtime client skeleton (Phase 2: connect to real runtime)
     const client = new StubRuntimeClient()
     // Attempt connection — failure is recorded but not fatal in Phase 1
-    await client.connect().catch(() => {
-      // StubRuntimeClient.connect() always succeeds; real client may fail here
-      // Phase 2 will surface this as a runtime error state
+    await client.connect().catch((e: unknown) => {
+      console.error("[amplifier] runtime client connection failed:", (e as Error).message)
+      // Phase 2 will surface this as a runtime error state in the UI
     })
 
     // 3. Resolve bundle (Phase 3: replace with runtime API)
