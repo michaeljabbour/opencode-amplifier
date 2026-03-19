@@ -1,5 +1,7 @@
 import { test, expect } from "bun:test"
 import { AmplifierSession, Coordinator, HookRegistry, CancellationToken } from "../src/kernel/session.js"
+import { buildHooks } from "../src/plugin/hooks.js"
+import { StubRuntimeClient } from "../src/runtime/client.js"
 
 test("plugin-hooks test infrastructure is working", () => {
   expect(true).toBe(true)
@@ -51,9 +53,6 @@ test("CancellationToken requestImmediate() sets cancelled state unconditionally"
   token.requestImmediate()   // should work from "none" state too
   expect(token.isCancelled).toBe(true)
 })
-
-import { buildHooks } from "../src/plugin/hooks.js"
-import { StubRuntimeClient } from "../src/runtime/client.js"
 
 const stubInput = {
   sessionID: "oc-session-1",
@@ -134,4 +133,19 @@ test("tool.execute.before hook does not throw when runtime is disconnected (Phas
   const hookOutput = { args: { command: "echo hello" } }
   // Note: use async lambda form for Bun compatibility
   await expect(async () => { await hooks["tool.execute.before"]!(hookInput as any, hookOutput) }).not.toThrow()
+})
+
+test("shell.env hook injects provider API key into env when not already set", async () => {
+  const session = new AmplifierSession()
+  const client = new StubRuntimeClient()
+  process.env["ANTHROPIC_API_KEY"] = "test-key-abc"
+  const hooks = buildHooks(session, client, {
+    bundleProviders: [{ name: "anthropic", module: "provider-anthropic", transport: "local", config: {} }],
+    bundleContext: null,
+    getActiveModeContext: () => null,
+  })
+  const output = { env: {} as Record<string, string> }
+  await hooks["shell.env"]!({} as any, output)
+  expect(output.env["ANTHROPIC_API_KEY"]).toBe("test-key-abc")
+  delete process.env["ANTHROPIC_API_KEY"]
 })

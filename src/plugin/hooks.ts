@@ -28,7 +28,10 @@ export function buildHooks(
   const { bundleProviders, bundleContext, getActiveModeContext } = config
 
   async function emit(event: string, data: Record<string, unknown>): Promise<HookResult | null> {
-    try { return await coord.hooks.emit(event, JSON.stringify(data)) } catch { return null }
+    try { return await coord.hooks.emit(event, JSON.stringify(data)) } catch (e) {
+      console.error("[amplifier] hook dispatch failed:", (e as Error).message)
+      return null
+    }
   }
 
   return {
@@ -41,7 +44,11 @@ export function buildHooks(
       })
       if (r?.action === "Deny") throw new Error(`amplifier denied tool ${inp.tool}: ${r.reason ?? "denied"}`)
       if (r?.action === "Modify" && r.contextInjection) {
-        try { Object.assign(out.args, JSON.parse(r.contextInjection)) } catch {}
+        try {
+          Object.assign(out.args, JSON.parse(r.contextInjection))
+        } catch (e) {
+          console.error("[amplifier] tool.execute.before Modify: invalid contextInjection JSON:", (e as Error).message)
+        }
       }
     },
 
@@ -91,7 +98,7 @@ export function buildHooks(
       for (const bp of bundleProviders) {
         const envVar = PROVIDER_ENV[bp.module]
         if (!envVar) continue
-        const key = resolveProviderEnvKey(bp.config ?? {})
+        const key = resolveProviderEnvKey(bp.config ?? {}) ?? process.env[envVar]
         if (key && !out.env[envVar]) out.env[envVar] = key
       }
     },
