@@ -11,7 +11,11 @@ export function runPython(script: string, timeout = 30000): Promise<string> {
     proc.stdout.on("data", (d: Buffer) => { stdout += d })
     proc.stderr.on("data", (d: Buffer) => { stderr += d })
     proc.on("close", (code) => {
-      if (code !== 0) return reject(new Error(stderr.trim() || `exit ${code}`))
+      if (code !== 0) {
+        const lines = stderr.trim().split("\n")
+        const summary = lines.at(-1)?.trim() || `exit ${code}`
+        return reject(new Error(summary))
+      }
       resolve(stdout.trim())
     })
     proc.on("error", (e) => reject(new Error(`python: ${e.message}`)))
